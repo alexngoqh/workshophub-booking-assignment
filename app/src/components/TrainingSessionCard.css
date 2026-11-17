@@ -171,3 +171,15 @@
   display: flex;
   gap: 0.5rem;
 }
+
+.btn--danger {
+  background: #fff;
+  border-color: #dc2626;
+  color: #b91c1c;
+}
+
+.session-card__my-status {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}

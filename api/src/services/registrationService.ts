@@ -145,3 +145,54 @@ export async function registerForSession(
     }
   })
 }
+
+export type CancelResult =
+  | { kind: 'not_found' }
+  | { kind: 'already_cancelled' }
+  | { kind: 'cancelled'; registration: RegistrationDetails; session: SessionCounts }
+
+export async function cancelRegistration(
+  sessionId: number,
+  registrationId: number
+): Promise<CancelResult> {
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.registration.findFirst({ where: { id: registrationId, sessionId } })
+    if (!current) return { kind: 'not_found' as const }
+
+    // Conditional update: only the first of two concurrent cancels changes the row,
+    // so the seat counter can never be decremented twice for one registration.
+    const changed = await tx.registration.updateMany({
+      where: { id: registrationId, sessionId, status: { not: 'cancelled' } },
+      data: { status: 'cancelled' },
+    })
+    if (changed.count === 0) return { kind: 'already_cancelled' as const }
+
+    if (current.status === 'confirmed') {
+      await tx.trainingSession.update({
+        where: { id: sessionId },
+        data: { registered: { decrement: 1 } },
+      })
+    }
+
+    const updated = await tx.registration.findUniqueOrThrow({ where: { id: registrationId } })
+    return {
+      kind: 'cancelled' as const,
+      registration: details(updated),
+      session: await sessionCounts(tx, sessionId),
+    }
+  })
+}
+
+export async function getRegistration(sessionId: number, registrationId: number) {
+  return prisma.$transaction(async (tx) => {
+    const registration = await tx.registration.findFirst({
+      where: { id: registrationId, sessionId },
+    })
+    if (!registration) return null
+    const position =
+      registration.status === 'waitlisted'
+        ? await waitlistPosition(tx, sessionId, registration.id)
+        : null
+    return { ...details(registration), position }
+  })
+}
