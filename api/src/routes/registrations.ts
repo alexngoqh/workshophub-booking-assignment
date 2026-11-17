@@ -2,6 +2,7 @@ import { Router, IRouter, Request, Response } from 'express'
 import {
   cancelRegistration,
   getRegistration,
+  listRegistrations,
   registerForSession,
   validateRegistrationInput,
 } from '../services/registrationService'
@@ -13,6 +14,25 @@ function parseId(value: string): number | null {
   const id = Number(value)
   return Number.isInteger(id) && id > 0 ? id : null
 }
+
+router.get('/', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const sessionId = parseId(req.params.id)
+    if (sessionId === null) {
+      res.status(400).json({ error: 'Invalid session ID' })
+      return
+    }
+    const result = await listRegistrations(sessionId)
+    if (!result) {
+      res.status(404).json({ error: 'Training session not found' })
+      return
+    }
+    res.json(result)
+  } catch (error) {
+    console.error('Error listing registrations:', error)
+    res.status(500).json({ error: 'Failed to list registrations' })
+  }
+})
 
 router.post('/', async (req: Request<{ id: string }>, res: Response) => {
   try {

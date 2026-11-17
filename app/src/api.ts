@@ -84,3 +84,16 @@ export function cancelRegistration(sessionId: number, registrationId: number) {
     `/api/training-sessions/${sessionId}/registrations/${registrationId}`
   )
 }
+
+export interface SessionRegistrations {
+  confirmed: RegistrationLookup[]
+  waitlisted: RegistrationLookup[]
+}
+
+export function listRegistrations(sessionId: number) {
+  return send<SessionRegistrations>('GET', `/api/training-sessions/${sessionId}/registrations`)
+}
+
+export function getSession<T>(sessionId: number) {
+  return send<T>('GET', `/api/training-sessions/${sessionId}`)
+}

@@ -1,0 +1,88 @@
+.session-detail {
+  padding: 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.back-link {
+  color: #1d4ed8;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.session-detail__title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--color-text);
+}
+
+.session-detail__meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.session-detail__meta dt {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.session-detail__meta dd {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.session-detail__description {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+.session-detail__registrations {
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.session-detail__registrations h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.registrant-group__title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.registrant-group__empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.registrant-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.registrant-table th,
+.registrant-table td {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.registrant-table th {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
