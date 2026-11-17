@@ -35,9 +35,10 @@ test.describe('LATC-3: waitlist when a session is full', () => {
     await joinWaitlist(page, 'Grace Hopper', 'grace@example.com')
 
     const c = card(page)
-    await expect(c.getByRole('status')).toHaveText(
-      "You're on the waitlist (position 1). Your place is not confirmed yet."
+    await expect(page.locator('.banner')).toContainText(
+      `You're on the waitlist for ${TITLE}. We'll let you know if a spot opens up.`
     )
+    await expect(c.getByText('Your status: Waitlisted (position 1)')).toBeVisible()
     await expect(c.getByText('16 / 16 registered')).toBeVisible()
     await expect(c.getByText('1 on waitlist')).toBeVisible()
 
@@ -54,7 +55,7 @@ test.describe('LATC-3: waitlist when a session is full', () => {
     await expect(card(page).getByText('1 on waitlist')).toBeVisible()
     await joinWaitlist(page, 'Second', 'second@example.com')
 
-    await expect(card(page).getByRole('status')).toContainText('position 2')
+    await expect(card(page).getByText('Your status: Waitlisted (position 2)')).toBeVisible()
     await expect(card(page).getByText('2 on waitlist')).toBeVisible()
   })
 
@@ -65,7 +66,8 @@ test.describe('LATC-3: waitlist when a session is full', () => {
     await c.getByLabel('Name').fill('Ada')
     await c.getByLabel('Email').fill('ada@example.com')
     await c.getByRole('button', { name: 'Confirm registration' }).click()
-    await expect(c.getByRole('status')).toContainText('Registration confirmed')
+    await expect(page.locator('.banner')).toContainText("You're registered!")
+    await expect(c.getByText('Your status: Confirmed')).toBeVisible()
     await expect(c.getByText('on waitlist')).toHaveCount(0)
   })
 })

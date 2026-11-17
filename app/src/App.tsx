@@ -1,5 +1,6 @@
 import TrainingSessionsPage from './pages/TrainingSessionsPage'
 import SessionDetailPage from './pages/SessionDetailPage'
+import Banner from './components/Banner'
 import { matchSessionPath, usePath } from './router'
 import './App.css'
 
@@ -14,6 +15,7 @@ function App() {
         <p className="app-tagline">Internal Training Registration System</p>
       </header>
       <main className="app-main">
+        <Banner />
         {sessionId !== null ? (
           <SessionDetailPage sessionId={sessionId} />
         ) : (

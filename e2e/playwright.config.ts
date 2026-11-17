@@ -30,7 +30,14 @@ export default defineConfig({
       command: `pnpm exec prisma db push --force-reset --skip-generate && pnpm exec ts-node prisma/seed.ts && pnpm exec ts-node --transpile-only src/server.ts`,
       cwd: apiDir,
       url: `${API_URL}/health`,
-      env: { DATABASE_URL: E2E_DATABASE_URL, APP_PORT: String(API_PORT), NODE_ENV: 'test' },
+      env: {
+        DATABASE_URL: E2E_DATABASE_URL,
+        APP_PORT: String(API_PORT),
+        NODE_ENV: 'test',
+        // Unreachable on purpose: every Slack delivery fails, proving notifications are
+        // fire-and-forget and never break registration (LATC-8).
+        SLACK_WEBHOOK_URL: 'http://127.0.0.1:9/unreachable-slack-webhook',
+      },
       reuseExistingServer: false,
       timeout: 120_000,
     },

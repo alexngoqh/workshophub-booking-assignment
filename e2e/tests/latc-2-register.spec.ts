@@ -23,7 +23,8 @@ test.describe('LATC-2: register for a training session', () => {
     await c.getByLabel('Email').fill('ada@example.com')
     await c.getByRole('button', { name: 'Confirm registration' }).click()
 
-    await expect(c.getByRole('status')).toContainText('Registration confirmed for Ada Lovelace')
+    await expect(page.locator('.banner')).toContainText(`You're registered! ${TITLE} on`)
+    await expect(c.getByText('Your status: Confirmed')).toBeVisible()
     await expect(c.getByText('1 / 16 registered')).toBeVisible()
 
     // Persisted on the server, not just in the UI
