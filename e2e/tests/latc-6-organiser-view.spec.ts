@@ -19,7 +19,14 @@ test.describe('LATC-6: organiser can view registrations for a session', () => {
 
     await expect(page).toHaveURL(`/sessions/${session.id}`)
     await expect(page.getByRole('heading', { level: 2, name: TITLE })).toBeVisible()
+    // Full session info: date, time, location, delivery mode, capacity and full description
+    await expect(page.getByText('Wednesday, 29 July 2026')).toBeVisible()
     await expect(page.getByText('Training Room B, Level 2')).toBeVisible()
+    await expect(page.locator('.session-detail__meta')).toContainText('In Person')
+    await expect(page.locator('.session-detail__meta')).toContainText('0 / 16 registered')
+    await expect(page.locator('.session-detail__description')).toHaveText(
+      /^Identify and prevent common security vulnerabilities .* automated security scanning\.$/
+    )
     await expect(page.getByRole('heading', { name: 'Registrations' })).toBeVisible()
 
     await page.goBack()
