@@ -1,4 +1,4 @@
-import { execSync } from 'child_process'
+import { execFileSync, execSync } from 'child_process'
 import path from 'path'
 import type { APIRequestContext } from '@playwright/test'
 
@@ -54,4 +54,23 @@ export async function fillSession(request: APIRequestContext, title: string) {
     if (res.status !== 201) throw new Error(`fillSession: unexpected ${res.status}`)
   }
   return session
+}
+
+/** Sets a session's registration deadline directly in the E2E database ("time travel"). */
+export function setRegistrationDeadline(title: string, deadline: Date | null) {
+  const script = `
+    const { PrismaClient } = require('@prisma/client')
+    const prisma = new PrismaClient()
+    prisma.trainingSession
+      .updateMany({ where: { title: ${JSON.stringify(title)} }, data: { registrationDeadline: ${
+        deadline ? `new Date(${JSON.stringify(deadline.toISOString())})` : 'null'
+      } } })
+      .then((r) => { if (r.count !== 1) throw new Error('session not found') })
+      .finally(() => prisma.$disconnect())
+  `
+  execFileSync('node', ['-e', script], {
+    cwd: apiDir,
+    env: { ...process.env, DATABASE_URL: process.env.E2E_DATABASE_URL },
+    stdio: 'pipe',
+  })
 }

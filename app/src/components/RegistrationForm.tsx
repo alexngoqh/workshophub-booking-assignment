@@ -22,6 +22,9 @@ function RegistrationForm({ sessionId, submitLabel, onRegistered, onCancel }: Pr
     setSubmitting(false)
     if (result.ok) {
       onRegistered(result.data)
+    } else if (result.status === 422) {
+      // The deadline passed while the form was open (LATC-7)
+      setError('Registration for this session has closed')
     } else {
       setError(result.error)
     }

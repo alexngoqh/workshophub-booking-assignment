@@ -2,7 +2,15 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
 async function main() {
+  // Seeded session dates are fixed, so deadlines are relative to "now" to always demo
+  // one open and one closed session (LATC-7).
+  const now = Date.now()
+  const openDeadline = new Date(now + 14 * DAY_MS)
+  const closedDeadline = new Date(now - DAY_MS)
+
   console.log('Seeding training sessions...')
 
   await prisma.registration.deleteMany()
@@ -20,6 +28,7 @@ async function main() {
         location: 'Training Room A, Level 3',
         deliveryMode: 'in-person',
         status: 'active',
+        registrationDeadline: openDeadline,
       },
       {
         title: 'TDD in Agentic Development Loop',
@@ -64,6 +73,7 @@ async function main() {
         location: 'Training Room A, Level 3',
         deliveryMode: 'in-person',
         status: 'active',
+        registrationDeadline: closedDeadline,
       },
     ],
   })

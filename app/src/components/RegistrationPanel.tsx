@@ -13,6 +13,7 @@ import {
   rememberMyRegistration,
 } from '../myRegistrations'
 import RegistrationForm from './RegistrationForm'
+import { formatDateTime } from '../format'
 
 interface Props {
   session: TrainingSession
@@ -36,6 +37,9 @@ function statusLabel(mine: MyRegistration) {
 /** Register / join waitlist / cancel actions for one session card. */
 function RegistrationPanel({ session, onCountsChange }: Props) {
   const isFull = session.registered >= session.capacity
+  const deadline = session.registrationDeadline ? new Date(session.registrationDeadline) : null
+  // Display only: the server enforces the deadline with its own clock.
+  const isClosed = deadline !== null && Date.now() > deadline.getTime()
   const [formOpen, setFormOpen] = useState(false)
   const [message, setMessage] = useState<Message>(null)
   const [mine, setMine] = useState<MyRegistration | null>(null)
@@ -128,7 +132,18 @@ function RegistrationPanel({ session, onCountsChange }: Props) {
         </button>
       )}
 
+      {deadline && !isClosed && (
+        <p className="session-card__deadline">
+          Registration closes: {formatDateTime(session.registrationDeadline as string)}
+        </p>
+      )}
+
+      {!isActive && isClosed && !formOpen && (
+        <p className="session-card__closed">Registration closed</p>
+      )}
+
       {!isActive &&
+        (!isClosed || formOpen) &&
         (formOpen ? (
           <RegistrationForm
             sessionId={session.id}

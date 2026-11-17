@@ -201,3 +201,20 @@
 .session-card form {
   cursor: default;
 }
+
+.session-card__deadline {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.session-card__closed {
+  margin: 0;
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+}
