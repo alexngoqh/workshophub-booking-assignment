@@ -52,7 +52,8 @@ export function notify(event: RegistrationNotification): void {
     const delivery = Promise.resolve()
       .then(() => transport(event))
       .catch((error: unknown) => {
-        console.error('[notification] delivery failed:', error)
+        const reason = error instanceof Error ? error.message : String(error)
+        console.error(`[notification] delivery failed: ${reason}`)
       })
       .finally(() => pending.delete(delivery))
     pending.add(delivery)

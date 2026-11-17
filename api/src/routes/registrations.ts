@@ -1,6 +1,7 @@
 import { Router, IRouter, Request, Response } from 'express'
 import {
   cancelRegistration,
+  getAuditHistory,
   getRegistration,
   listRegistrations,
   registerForSession,
@@ -85,6 +86,23 @@ function parseRegistrationParams(req: Request<RegistrationParams>, res: Response
   }
   return { sessionId, registrationId }
 }
+
+// Read-only on purpose: audit entries are immutable through the API (LATC-9).
+router.get('/:registrationId/audit', async (req: Request<RegistrationParams>, res: Response) => {
+  try {
+    const ids = parseRegistrationParams(req, res)
+    if (!ids) return
+    const history = await getAuditHistory(ids.sessionId, ids.registrationId)
+    if (!history) {
+      res.status(404).json({ error: 'Registration not found' })
+      return
+    }
+    res.json(history)
+  } catch (error) {
+    console.error('Error fetching audit history:', error)
+    res.status(500).json({ error: 'Failed to fetch audit history' })
+  }
+})
 
 router.get('/:registrationId', async (req: Request<RegistrationParams>, res: Response) => {
   try {

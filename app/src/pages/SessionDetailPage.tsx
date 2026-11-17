@@ -27,6 +27,7 @@ function RegistrantList({ title, entries }: { title: string; entries: Registrati
         <table className="registrant-table">
           <thead>
             <tr>
+              <th>ID</th>
               <th>Name</th>
               <th>Email</th>
               <th>Registered on</th>
@@ -35,6 +36,7 @@ function RegistrantList({ title, entries }: { title: string; entries: Registrati
           <tbody>
             {entries.map((r) => (
               <tr key={r.id}>
+                <td>{r.id}</td>
                 <td>{r.name}</td>
                 <td>{r.email}</td>
                 <td>{formatDateTime(r.createdAt)}</td>

@@ -64,7 +64,7 @@ describe('notifications (LATC-8)', () => {
     expect(() => notify(event)).not.toThrow()
     await flushNotifications()
 
-    expect(error).toHaveBeenCalledWith('[notification] delivery failed:', expect.any(Error))
+    expect(error).toHaveBeenCalledWith('[notification] delivery failed: boom')
     expect(ok).toHaveLength(1) // other transports still deliver
   })
 
