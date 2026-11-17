@@ -1,8 +1,8 @@
-import { test as base, expect } from '@playwright/test'
+import { test as base, expect, BrowserContext, Page } from '@playwright/test'
 
 // When SHOW_CURSOR=1 (set by the local verify scripts), inject a visible cursor that follows
 // the mouse, ripples on click, and outlines the focused field, so a headed run is easy to follow.
-const cursorScript = () => {
+export const cursorScript = () => {
   const install = () => {
     if (document.getElementById('__pw_cursor')) return
     const style = document.createElement('style')
@@ -53,10 +53,21 @@ const cursorScript = () => {
   }
 }
 
-export const test = base.extend({
+export const test = base.extend<{ newUserPage: () => Promise<Page> }>({
   page: async ({ page }, use) => {
     if (process.env.SHOW_CURSOR) await page.addInitScript(cursorScript)
     await use(page)
+  },
+  // A page in a fresh browser context = a second employee with their own localStorage.
+  newUserPage: async ({ browser }, use) => {
+    const contexts: BrowserContext[] = []
+    await use(async () => {
+      const context = await browser.newContext({ baseURL: test.info().project.use.baseURL })
+      contexts.push(context)
+      if (process.env.SHOW_CURSOR) await context.addInitScript(cursorScript)
+      return context.newPage()
+    })
+    await Promise.all(contexts.map((c) => c.close()))
   },
 })
 
