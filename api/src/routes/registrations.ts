@@ -31,8 +31,10 @@ router.post('/', async (req: Request<{ id: string }>, res: Response) => {
       case 'duplicate':
         res.status(409).json({ error: 'This email is already registered for this session' })
         return
-      case 'full':
-        res.status(409).json({ error: 'Training session is full' })
+      case 'waitlisted':
+        res
+          .status(202)
+          .json({ ...result.registration, position: result.position, session: result.session })
         return
       case 'confirmed':
         res.status(201).json({ ...result.registration, session: result.session })

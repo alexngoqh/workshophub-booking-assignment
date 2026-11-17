@@ -42,11 +42,16 @@ function TrainingSessionCard({ session, onSessionChange }: Props) {
 
   function handleRegistered(registration: RegistrationResponse) {
     setFormOpen(false)
-    setConfirmation(`Registration confirmed for ${registration.name} (${registration.email}).`)
+    setConfirmation(
+      registration.status === 'waitlisted'
+        ? `You're on the waitlist (position ${registration.position}). Your place is not confirmed yet.`
+        : `Registration confirmed for ${registration.name} (${registration.email}).`
+    )
     onSessionChange({
       id: session.id,
       registered: registration.session.registered,
       capacity: registration.session.capacity,
+      waitlisted: registration.session.waitlisted,
     })
   }
 
@@ -87,6 +92,12 @@ function TrainingSessionCard({ session, onSessionChange }: Props) {
             )}
           </span>
         </div>
+        {session.waitlisted > 0 && (
+          <div className="meta-item">
+            <span className="meta-label">Waitlist</span>
+            <span className="meta-value">{session.waitlisted} on waitlist</span>
+          </div>
+        )}
       </div>
 
       <div className="session-card__actions">
@@ -98,7 +109,7 @@ function TrainingSessionCard({ session, onSessionChange }: Props) {
         {formOpen ? (
           <RegistrationForm
             sessionId={session.id}
-            submitLabel="Confirm registration"
+            submitLabel={isFull ? 'Join waitlist' : 'Confirm registration'}
             onRegistered={handleRegistered}
             onCancel={() => setFormOpen(false)}
           />
@@ -106,13 +117,12 @@ function TrainingSessionCard({ session, onSessionChange }: Props) {
           <button
             type="button"
             className="btn btn--primary"
-            disabled={isFull}
             onClick={() => {
               setConfirmation(null)
               setFormOpen(true)
             }}
           >
-            {isFull ? 'Full' : 'Register'}
+            {isFull ? 'Join Waitlist' : 'Register'}
           </button>
         )}
       </div>

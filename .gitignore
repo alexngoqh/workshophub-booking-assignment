@@ -58,3 +58,6 @@ e2e/playwright-report/
 
 # OpenSpec planning artifacts (local only)
 openspec/
+
+# Local verification scripts
+verify/
