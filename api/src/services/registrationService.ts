@@ -95,6 +95,19 @@ function details(r: {
   }
 }
 
+type TransitionReason = 'registered' | 'waitlisted' | 'promoted' | 'cancelled'
+
+/** Writes one immutable audit entry; always called inside the transaction making the change. */
+async function recordTransition(
+  tx: Tx,
+  registrationId: number,
+  fromStatus: RegistrationStatus | null,
+  toStatus: RegistrationStatus,
+  reason: TransitionReason
+) {
+  await tx.auditLog.create({ data: { registrationId, fromStatus, toStatus, reason } })
+}
+
 /** 1-based position among waitlisted registrations of the session, ordered by id. */
 async function waitlistPosition(tx: Tx, sessionId: number, registrationId: number) {
   return tx.registration.count({
@@ -135,6 +148,7 @@ export async function registerForSession(
       const registration = await tx.registration.create({
         data: { sessionId, name, email, status: 'waitlisted' },
       })
+      await recordTransition(tx, registration.id, null, 'waitlisted', 'waitlisted')
       return {
         kind: 'waitlisted' as const,
         registration: details(registration),
@@ -146,6 +160,7 @@ export async function registerForSession(
     const registration = await tx.registration.create({
       data: { sessionId, name, email, status: 'confirmed' },
     })
+    await recordTransition(tx, registration.id, null, 'confirmed', 'registered')
     return {
       kind: 'confirmed' as const,
       registration: details(registration),
@@ -185,7 +200,10 @@ async function promoteFirstWaitlisted(
       where: { id: candidate.id, status: 'waitlisted' },
       data: { status: 'confirmed' },
     })
-    if (promoted.count === 1) return candidate
+    if (promoted.count === 1) {
+      await recordTransition(tx, candidate.id, 'waitlisted', 'confirmed', 'promoted')
+      return candidate
+    }
   }
 }
 
@@ -215,6 +233,13 @@ export async function cancelRegistration(
       data: { status: 'cancelled' },
     })
     if (changed.count === 0) return { kind: 'already_cancelled' as const }
+    await recordTransition(
+      tx,
+      registrationId,
+      current.status as RegistrationStatus,
+      'cancelled',
+      'cancelled'
+    )
 
     // A freed confirmed seat goes to the earliest waitlisted registration (LATC-5);
     // registered stays the same (-1 +1). Otherwise the seat is released.
@@ -276,4 +301,24 @@ export async function listRegistrations(sessionId: number) {
     confirmed: all.filter((r) => r.status === 'confirmed'),
     waitlisted: all.filter((r) => r.status === 'waitlisted'),
   }
+}
+
+/** Chronological audit history of one registration, or null when it does not exist. */
+export async function getAuditHistory(sessionId: number, registrationId: number) {
+  const registration = await prisma.registration.findFirst({
+    where: { id: registrationId, sessionId },
+  })
+  if (!registration) return null
+  return prisma.auditLog.findMany({
+    where: { registrationId },
+    orderBy: [{ changedAt: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      registrationId: true,
+      fromStatus: true,
+      toStatus: true,
+      changedAt: true,
+      reason: true,
+    },
+  })
 }
