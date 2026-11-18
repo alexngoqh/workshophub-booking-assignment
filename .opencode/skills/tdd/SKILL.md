@@ -1,68 +1,84 @@
 ---
 name: tdd
-description: "Drive a WorkshopHub change test-first by delegating to two subagents: test-writer (RED, blind to api/src) then implementer (GREEN). Use when the user wants to implement an acceptance criterion, story, or bug fix with TDD, 'red-green', 'write the tests first', or 'tdd this'. Do NOT use for pure refactors, docs, or config changes."
+description: 'Red-green loop for ONE WorkshopHub slice (one acceptance criterion or one Operation) per run. Delegates RED to the test-writer agent and GREEN to the implementer agent; this skill runs make test itself and pauses for the navigator to confirm RED. Use when the user says tdd, red-green, test-first, or wants to implement a single AC/Operation. Do not use it for a whole story at once.'
 ---
 
-# TDD: test-writer → RED gate → implementer → stop
+# TDD: one slice, red → green → stop
 
-You are the **orchestrator**. You do not write tests or production code yourself.
-You delegate each phase to a subagent and enforce the gate between them.
+You orchestrate. **You do not write tests or implementation yourself.** You
+delegate to the project agents **test-writer** and **implementer** and run the
+gates.
 
-## 0. Scope the work
+**Hard rule: ONE slice per skill run → stop.**
 
-- Identify the card (from the branch name `latc-{id}-…` or ask) and the single
-  acceptance criterion to implement. Read it from `stories/LATC-<id>.md`,
-  `openspec/specs/**`, or Jira.
-- If the request covers several criteria, take **one at a time**, run the full
-  loop for it, then move to the next.
-- Refuse to start on `main`. TDD work happens on a feature branch.
+## 1. Ask the navigator for ONE slice
 
-## 1. RED: delegate to `@test-writer`
+Ask which **single** slice we are implementing. Accept whatever they provide:
 
-Invoke the **test-writer** subagent with:
+- a pasted story acceptance criterion;
+- an Operation from the REASONS canvas;
+- a canvas excerpt.
 
-- the card key and the exact acceptance-criterion text;
-- the expected HTTP contract (method, path, status codes, body shape) if it is
-  known from the spec;
-- a reminder that it needs **both unit and integration tests**.
+If they give a whole story, or something vague like "implement LATC-8", ask
+them to pick one AC or Operation. Do not choose for them, and do not plan a
+whole-story suite.
 
-Do **not** paste any code from `api/src` into its prompt. It must stay blind to
-the implementation.
+## 2. Build the packet
 
-## 2. RED gate (you check it, don't trust it)
+Build a packet for the agents. It MAY include any of:
 
-Run the files the test-writer reported:
+- AC / **Operation** text
+- **Requirements**
+- **Entities**
+- **Approach**
+- **Structure** (intended module paths)
+- **Norms**
+- **Safeguards**
+- out-of-scope do-nots
+
+Pass through what the navigator provides. **Do not strip Approach or
+Operations.** Do not invent a whole-story suite or widen the slice. Never paste
+code from `api/src` into the packet.
+
+## 3. RED: delegate to `test-writer`
+
+Invoke the **test-writer** agent with the packet. It must not read `api/src/`.
+It writes only under `api/tests/` and does not run tests.
+
+## 4. RED gate: run `make test` yourself, then PAUSE
+
+Run:
 
 ```bash
-cd api && pnpm exec jest <reported test files>
+make test
 ```
 
-Continue only if all of the following hold:
+Show the navigator the **failure output** for the new tests: test names and the
+expected-vs-received lines. Say whether each one fails **for the right reason**
+(missing behaviour, wrong status or body) rather than a syntax, import, or
+setup error.
 
-- at least one **unit** test and one **integration** test were added;
-- every new test **fails**, and fails for a behavioural reason (missing route,
-  wrong status, missing export), not a syntax or import error in the test;
-- no file under `api/src/` was modified (`git status --short api/src` is empty).
+Then **PAUSE** and ask the navigator to confirm RED, e.g. "These tests fail for
+the right reason. Confirm RED to continue?"
 
-If any check fails, send it back to `@test-writer` with the specific problem.
-After two failed attempts, stop and report to the user.
+- **Do not implement yet.**
+- If they don't confirm, or a test fails for the wrong reason, send the issue
+  back to test-writer and repeat steps 3–4.
 
-## 3. GREEN: delegate to `@implementer`
+## 5. GREEN: delegate to `implementer`
 
-Invoke the **implementer** subagent with:
+Only **after the navigator confirms RED**, invoke the **implementer** agent with:
 
-- the card key and acceptance criterion;
-- the list of failing test files and their failure reasons from step 2.
+- the **same packet**;
+- the failing tests' names, files, and failure output from step 4.
 
-## 4. Verify and stop
+## 6. GREEN gate: run `make test` yourself
 
-Check the implementer's claims yourself:
+Run `make test` again and confirm it is **green**. Check that `git diff
+api/tests` shows the implementer did not weaken any test. Report: slice → tests
+added → files changed → `make test` result.
 
-- the target tests pass;
-- `make test`, `make lint`, and `make format-check` all pass;
-- `git diff --stat api/tests` shows that the implementer did not change the
-  tests (only the test-writer's additions are there).
+## 7. STOP
 
-Report to the user: criterion → tests added → files changed → gate results.
-Then **stop**. Do not commit, refactor, or start the next criterion unless the
-user asks. Use the `commit` skill when they want to commit.
+Do not start the next slice. For another slice, the navigator runs the skill
+again.
