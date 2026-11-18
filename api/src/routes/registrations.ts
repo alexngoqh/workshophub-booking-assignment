@@ -45,7 +45,7 @@ router.post('/', async (req: Request<{ id: string }>, res: Response) => {
 
     const errors = validateRegistrationInput(req.body)
     if (errors.length > 0) {
-      res.status(400).json({ error: 'Invalid registration', details: errors })
+      res.status(400).json({ error: 'Invalid registration', details: errors, errors })
       return
     }
 

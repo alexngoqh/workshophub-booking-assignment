@@ -7,6 +7,7 @@ export interface RegistrationInput {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const NAME_MAX_LENGTH = 100
 
 /** Returns a list of validation problems; an empty list means the input is valid. */
 export function validateRegistrationInput(body: unknown): string[] {
@@ -14,6 +15,8 @@ export function validateRegistrationInput(body: unknown): string[] {
   const input = (body ?? {}) as Record<string, unknown>
   if (typeof input.name !== 'string' || input.name.trim() === '') {
     errors.push('name is required')
+  } else if (input.name.trim().length > NAME_MAX_LENGTH) {
+    errors.push(`name must be at most ${NAME_MAX_LENGTH} characters`)
   }
   if (typeof input.email !== 'string' || input.email.trim() === '') {
     errors.push('email is required')
