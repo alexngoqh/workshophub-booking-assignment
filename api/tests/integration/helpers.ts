@@ -4,7 +4,12 @@ let counter = 0
 
 /** Creates an isolated session for a test; dated far in the future so it never sorts first. */
 export async function createTestSession(
-  overrides: Partial<{ capacity: number; registered: number; title: string }> = {}
+  overrides: Partial<{
+    capacity: number
+    registered: number
+    title: string
+    registrationDeadline: Date | null
+  }> = {}
 ) {
   counter += 1
   return prisma.trainingSession.create({
@@ -17,6 +22,7 @@ export async function createTestSession(
       location: 'Test room',
       deliveryMode: 'online',
       status: 'active',
+      registrationDeadline: overrides.registrationDeadline ?? null,
     },
   })
 }

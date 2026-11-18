@@ -53,6 +53,9 @@ router.post('/', async (req: Request<{ id: string }>, res: Response) => {
       case 'session_not_found':
         res.status(404).json({ error: 'Training session not found' })
         return
+      case 'deadline_passed':
+        res.status(422).json({ error: 'Registration deadline has passed' })
+        return
       case 'duplicate':
         res.status(409).json({ error: 'This email is already registered for this session' })
         return

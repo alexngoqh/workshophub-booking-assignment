@@ -51,6 +51,7 @@ export interface SessionCounts {
 
 export type RegisterResult =
   | { kind: 'session_not_found' }
+  | { kind: 'deadline_passed' }
   | { kind: 'duplicate' }
   | { kind: 'confirmed'; registration: RegistrationDetails; session: SessionCounts }
   | {
@@ -102,7 +103,8 @@ async function waitlistPosition(tx: Tx, sessionId: number, registrationId: numbe
 
 export async function registerForSession(
   sessionId: number,
-  input: RegistrationInput
+  input: RegistrationInput,
+  now: Date = new Date()
 ): Promise<RegisterResult> {
   const name = input.name.trim()
   const email = input.email.trim().toLowerCase()
@@ -110,6 +112,11 @@ export async function registerForSession(
   return prisma.$transaction(async (tx) => {
     const session = await tx.trainingSession.findUnique({ where: { id: sessionId } })
     if (!session) return { kind: 'session_not_found' as const }
+
+    // Server time is authoritative for the cut-off (LATC-7); applies to the waitlist too.
+    if (session.registrationDeadline && now > session.registrationDeadline) {
+      return { kind: 'deadline_passed' as const }
+    }
 
     const existing = await tx.registration.findFirst({
       where: { sessionId, email, status: { in: ACTIVE_STATUSES } },
