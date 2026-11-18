@@ -5,6 +5,9 @@ export interface TrainingSession {
   date: string
   capacity: number
   registered: number
+  waitlisted: number
+  /** ISO date-time; null when registration never closes. */
+  registrationDeadline: string | null
   location: string
   deliveryMode: string
   status: string

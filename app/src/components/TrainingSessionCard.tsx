@@ -1,41 +1,41 @@
+import type { MouseEvent } from 'react'
 import type { TrainingSession } from '../types'
+import type { SessionCounts } from '../api'
+import RegistrationPanel from './RegistrationPanel'
+import { deliveryModeLabel, formatDate, formatTime } from '../format'
+import { linkHandler, navigate, sessionPath } from '../router'
 import './TrainingSessionCard.css'
 
 interface Props {
   session: TrainingSession
+  onSessionChange: (update: Partial<TrainingSession> & { id: number }) => void
 }
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-SG', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
-
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString('en-SG', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function deliveryModeLabel(mode: string): string {
-  const labels: Record<string, string> = {
-    'in-person': 'In Person',
-    online: 'Online',
-    hybrid: 'Hybrid',
-  }
-  return labels[mode] ?? mode
-}
-
-function TrainingSessionCard({ session }: Props) {
+function TrainingSessionCard({ session, onSessionChange }: Props) {
   const spotsLeft = session.capacity - session.registered
   const isFull = spotsLeft <= 0
 
+  function handleCountsChange(counts: SessionCounts) {
+    onSessionChange({
+      id: session.id,
+      registered: counts.registered,
+      capacity: counts.capacity,
+      waitlisted: counts.waitlisted,
+    })
+  }
+
+  // Clicking anywhere on the card opens the detail page, except on interactive elements.
+  function handleCardClick(event: MouseEvent<HTMLElement>) {
+    const target = event.target as HTMLElement
+    if (target.closest('button, a, input, label, form, textarea, select')) return
+    navigate(sessionPath(session.id))
+  }
+
   return (
-    <article className={`session-card ${isFull ? 'session-card--full' : ''}`}>
+    <article
+      className={`session-card ${isFull ? 'session-card--full' : ''}`}
+      onClick={handleCardClick}
+    >
       <div className="session-card__header">
         <span className={`session-badge session-badge--${session.deliveryMode}`}>
           {deliveryModeLabel(session.deliveryMode)}
@@ -43,7 +43,11 @@ function TrainingSessionCard({ session }: Props) {
         {isFull && <span className="session-badge session-badge--full">Full</span>}
       </div>
 
-      <h3 className="session-card__title">{session.title}</h3>
+      <h3 className="session-card__title">
+        <a href={sessionPath(session.id)} onClick={linkHandler(sessionPath(session.id))}>
+          {session.title}
+        </a>
+      </h3>
       <p className="session-card__description">{session.description}</p>
 
       <div className="session-card__meta">
@@ -71,7 +75,15 @@ function TrainingSessionCard({ session }: Props) {
             )}
           </span>
         </div>
+        {session.waitlisted > 0 && (
+          <div className="meta-item">
+            <span className="meta-label">Waitlist</span>
+            <span className="meta-value">{session.waitlisted} on waitlist</span>
+          </div>
+        )}
       </div>
+
+      <RegistrationPanel session={session} onCountsChange={handleCountsChange} />
     </article>
   )
 }

@@ -26,22 +26,30 @@ const mockSession = {
   status: 'open',
 }
 
+const include = {
+  _count: { select: { registrations: { where: { status: 'waitlisted' } } } },
+}
+const withCount = <T extends object>(s: T, waitlisted = 0) => ({
+  ...s,
+  _count: { registrations: waitlisted },
+})
+
 afterEach(() => {
   jest.clearAllMocks()
 })
 
 describe('getAllSessions', () => {
-  it('returns sessions ordered by date', async () => {
-    const sessions = [
-      mockSession,
-      { ...mockSession, id: 2, date: new Date('2026-07-02T09:00:00Z') },
-    ]
-    mockFindMany.mockResolvedValue(sessions)
+  it('returns sessions ordered by date with a flat waitlisted count', async () => {
+    const second = { ...mockSession, id: 2, date: new Date('2026-07-02T09:00:00Z') }
+    mockFindMany.mockResolvedValue([withCount(mockSession), withCount(second, 3)])
 
     const result = await getAllSessions()
 
-    expect(result).toEqual(sessions)
-    expect(mockFindMany).toHaveBeenCalledWith({ orderBy: { date: 'asc' } })
+    expect(result).toEqual([
+      { ...mockSession, waitlisted: 0 },
+      { ...second, waitlisted: 3 },
+    ])
+    expect(mockFindMany).toHaveBeenCalledWith({ orderBy: { date: 'asc' }, include })
   })
 
   it('returns an empty array when no sessions exist', async () => {
@@ -55,12 +63,12 @@ describe('getAllSessions', () => {
 
 describe('getSessionById', () => {
   it('returns the matching session', async () => {
-    mockFindUnique.mockResolvedValue(mockSession)
+    mockFindUnique.mockResolvedValue(withCount(mockSession, 2))
 
     const result = await getSessionById(1)
 
-    expect(result).toEqual(mockSession)
-    expect(mockFindUnique).toHaveBeenCalledWith({ where: { id: 1 } })
+    expect(result).toEqual({ ...mockSession, waitlisted: 2 })
+    expect(mockFindUnique).toHaveBeenCalledWith({ where: { id: 1 }, include })
   })
 
   it('returns null when session does not exist', async () => {
