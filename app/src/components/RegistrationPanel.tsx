@@ -13,7 +13,8 @@ import {
   rememberMyRegistration,
 } from '../myRegistrations'
 import RegistrationForm from './RegistrationForm'
-import { formatDateTime } from '../format'
+import { formatDate, formatDateTime } from '../format'
+import { showBanner } from '../banner'
 
 interface Props {
   session: TrainingSession
@@ -72,13 +73,12 @@ function RegistrationPanel({ session, onCountsChange }: Props) {
       status: registration.status,
       position: registration.position ?? null,
     })
-    setMessage({
-      kind: 'success',
-      text:
-        registration.status === 'waitlisted'
-          ? `You're on the waitlist (position ${registration.position}). Your place is not confirmed yet.`
-          : `Registration confirmed for ${registration.name} (${registration.email}).`,
-    })
+    setMessage(null)
+    showBanner(
+      registration.status === 'waitlisted'
+        ? `You're on the waitlist for ${registration.session.title}. We'll let you know if a spot opens up.`
+        : `You're registered! ${registration.session.title} on ${formatDate(registration.session.date)}`
+    )
     onCountsChange(registration.session)
   }
 

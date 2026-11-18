@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma'
+import { notify } from '../notifications'
 
 export interface RegistrationInput {
   name: string
@@ -109,7 +110,7 @@ export async function registerForSession(
   const name = input.name.trim()
   const email = input.email.trim().toLowerCase()
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx): Promise<RegisterResult> => {
     const session = await tx.trainingSession.findUnique({ where: { id: sessionId } })
     if (!session) return { kind: 'session_not_found' as const }
 
@@ -151,14 +152,29 @@ export async function registerForSession(
       session: await sessionCounts(tx, sessionId),
     }
   })
+
+  // Only after the transaction committed (LATC-8); waitlisting is not notified.
+  if (result.kind === 'confirmed') {
+    notify({
+      name: result.registration.name,
+      email: result.registration.email,
+      sessionTitle: result.session.title,
+      sessionDate: result.session.date,
+      status: 'confirmed',
+    })
+  }
+  return result
 }
 
 /**
  * Flips the earliest waitlisted registration to confirmed. The conditional update means a
  * row already taken by a concurrent cancellation is skipped and the next candidate is tried.
- * Returns the promoted id, or null when nobody is waiting.
+ * Returns the promoted registration, or null when nobody is waiting.
  */
-async function promoteFirstWaitlisted(tx: Tx, sessionId: number): Promise<number | null> {
+async function promoteFirstWaitlisted(
+  tx: Tx,
+  sessionId: number
+): Promise<{ id: number; name: string; email: string } | null> {
   for (;;) {
     const candidate = await tx.registration.findFirst({
       where: { sessionId, status: 'waitlisted' },
@@ -169,7 +185,7 @@ async function promoteFirstWaitlisted(tx: Tx, sessionId: number): Promise<number
       where: { id: candidate.id, status: 'waitlisted' },
       data: { status: 'confirmed' },
     })
-    if (promoted.count === 1) return candidate.id
+    if (promoted.count === 1) return candidate
   }
 }
 
@@ -180,6 +196,7 @@ export type CancelResult =
       kind: 'cancelled'
       registration: RegistrationDetails
       promotedRegistrationId: number | null
+      promoted: { id: number; name: string; email: string } | null
       session: SessionCounts
     }
 
@@ -187,7 +204,7 @@ export async function cancelRegistration(
   sessionId: number,
   registrationId: number
 ): Promise<CancelResult> {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx): Promise<CancelResult> => {
     const current = await tx.registration.findFirst({ where: { id: registrationId, sessionId } })
     if (!current) return { kind: 'not_found' as const }
 
@@ -201,9 +218,9 @@ export async function cancelRegistration(
 
     // A freed confirmed seat goes to the earliest waitlisted registration (LATC-5);
     // registered stays the same (-1 +1). Otherwise the seat is released.
-    const promotedRegistrationId =
+    const promoted =
       current.status === 'confirmed' ? await promoteFirstWaitlisted(tx, sessionId) : null
-    if (current.status === 'confirmed' && promotedRegistrationId === null) {
+    if (current.status === 'confirmed' && promoted === null) {
       await tx.trainingSession.update({
         where: { id: sessionId },
         data: { registered: { decrement: 1 } },
@@ -214,10 +231,22 @@ export async function cancelRegistration(
     return {
       kind: 'cancelled' as const,
       registration: details(updated),
-      promotedRegistrationId,
+      promotedRegistrationId: promoted?.id ?? null,
+      promoted,
       session: await sessionCounts(tx, sessionId),
     }
   })
+
+  if (result.kind === 'cancelled' && result.promoted) {
+    notify({
+      name: result.promoted.name,
+      email: result.promoted.email,
+      sessionTitle: result.session.title,
+      sessionDate: result.session.date,
+      status: 'promoted',
+    })
+  }
+  return result
 }
 
 export async function getRegistration(sessionId: number, registrationId: number) {
