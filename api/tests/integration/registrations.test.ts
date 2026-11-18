@@ -55,6 +55,19 @@ describe('POST /api/training-sessions/:id/registrations (LATC-2)', () => {
     expect(res.status).toBe(400)
   })
 
+  it('returns 400 with "name must be at most 100 characters" and does not register', async () => {
+    const s = await session()
+    const res = await request(app)
+      .post(url(s.id))
+      .send({ name: 'a'.repeat(101), email: 'ada@example.com' })
+
+    expect(res.status).toBe(400)
+    expect(res.body.details).toContain('name must be at most 100 characters')
+
+    const after = await request(app).get(`/api/training-sessions/${s.id}`)
+    expect(after.body.registered).toBe(0)
+  })
+
   it('returns 404 when the session does not exist', async () => {
     const res = await request(app).post(url(999999)).send({ name: 'Ada', email: 'a@example.com' })
     expect(res.status).toBe(404)

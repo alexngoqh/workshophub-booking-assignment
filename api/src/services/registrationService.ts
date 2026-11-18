@@ -14,6 +14,8 @@ export function validateRegistrationInput(body: unknown): string[] {
   const input = (body ?? {}) as Record<string, unknown>
   if (typeof input.name !== 'string' || input.name.trim() === '') {
     errors.push('name is required')
+  } else if (input.name.trim().length > 100) {
+    errors.push('name must be at most 100 characters')
   }
   if (typeof input.email !== 'string' || input.email.trim() === '') {
     errors.push('email is required')
