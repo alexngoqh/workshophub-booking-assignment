@@ -1,8 +1,12 @@
+import { useState } from 'react'
 import type { TrainingSession } from '../types'
+import type { RegistrationResponse } from '../api'
+import RegistrationForm from './RegistrationForm'
 import './TrainingSessionCard.css'
 
 interface Props {
   session: TrainingSession
+  onSessionChange: (update: Partial<TrainingSession> & { id: number }) => void
 }
 
 function formatDate(dateStr: string): string {
@@ -30,9 +34,21 @@ function deliveryModeLabel(mode: string): string {
   return labels[mode] ?? mode
 }
 
-function TrainingSessionCard({ session }: Props) {
+function TrainingSessionCard({ session, onSessionChange }: Props) {
   const spotsLeft = session.capacity - session.registered
   const isFull = spotsLeft <= 0
+  const [formOpen, setFormOpen] = useState(false)
+  const [confirmation, setConfirmation] = useState<string | null>(null)
+
+  function handleRegistered(registration: RegistrationResponse) {
+    setFormOpen(false)
+    setConfirmation(`Registration confirmed for ${registration.name} (${registration.email}).`)
+    onSessionChange({
+      id: session.id,
+      registered: registration.session.registered,
+      capacity: registration.session.capacity,
+    })
+  }
 
   return (
     <article className={`session-card ${isFull ? 'session-card--full' : ''}`}>
@@ -71,6 +87,34 @@ function TrainingSessionCard({ session }: Props) {
             )}
           </span>
         </div>
+      </div>
+
+      <div className="session-card__actions">
+        {confirmation && (
+          <p className="session-card__confirmation" role="status">
+            {confirmation}
+          </p>
+        )}
+        {formOpen ? (
+          <RegistrationForm
+            sessionId={session.id}
+            submitLabel="Confirm registration"
+            onRegistered={handleRegistered}
+            onCancel={() => setFormOpen(false)}
+          />
+        ) : (
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={isFull}
+            onClick={() => {
+              setConfirmation(null)
+              setFormOpen(true)
+            }}
+          >
+            {isFull ? 'Full' : 'Register'}
+          </button>
+        )}
       </div>
     </article>
   )

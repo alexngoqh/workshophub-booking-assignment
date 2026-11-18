@@ -1,8 +1,11 @@
 import { Router, IRouter, Request, Response } from 'express'
 import prisma from '../lib/prisma'
 import { getAllSessions, getSessionById } from '../services/trainingSessionService'
+import registrationsRouter from './registrations'
 
 const router: IRouter = Router()
+
+router.use('/:id/registrations', registrationsRouter)
 
 // Quick keyword search added for the session-finder feature
 // Security seed: SQL injection via $queryRawUnsafe — intentional for Workshop 8

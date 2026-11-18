@@ -3,12 +3,16 @@ import type { TrainingSession } from '../types'
 import TrainingSessionCard from '../components/TrainingSessionCard'
 import './TrainingSessionsPage.css'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+import { API_BASE } from '../api'
 
 function TrainingSessionsPage() {
   const [sessions, setSessions] = useState<TrainingSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  function handleSessionChange(update: Partial<TrainingSession> & { id: number }) {
+    setSessions((current) => current.map((s) => (s.id === update.id ? { ...s, ...update } : s)))
+  }
 
   useEffect(() => {
     fetch(`${API_BASE}/api/training-sessions`)
@@ -51,7 +55,11 @@ function TrainingSessionsPage() {
       </p>
       <div className="sessions-grid">
         {sessions.map((session) => (
-          <TrainingSessionCard key={session.id} session={session} />
+          <TrainingSessionCard
+            key={session.id}
+            session={session}
+            onSessionChange={handleSessionChange}
+          />
         ))}
       </div>
     </section>
