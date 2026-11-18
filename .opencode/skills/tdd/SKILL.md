@@ -35,6 +35,7 @@ Build a packet for the agents. It MAY include any of:
 - **Norms**
 - **Safeguards**
 - out-of-scope do-nots
+- intended module paths
 
 Pass through what the navigator provides. **Do not strip Approach or
 Operations.** Do not invent a whole-story suite or widen the slice. Never paste
