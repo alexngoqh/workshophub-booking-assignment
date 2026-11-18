@@ -1,7 +1,6 @@
-import { useState } from 'react'
 import type { TrainingSession } from '../types'
-import type { RegistrationResponse } from '../api'
-import RegistrationForm from './RegistrationForm'
+import type { SessionCounts } from '../api'
+import RegistrationPanel from './RegistrationPanel'
 import './TrainingSessionCard.css'
 
 interface Props {
@@ -37,21 +36,13 @@ function deliveryModeLabel(mode: string): string {
 function TrainingSessionCard({ session, onSessionChange }: Props) {
   const spotsLeft = session.capacity - session.registered
   const isFull = spotsLeft <= 0
-  const [formOpen, setFormOpen] = useState(false)
-  const [confirmation, setConfirmation] = useState<string | null>(null)
 
-  function handleRegistered(registration: RegistrationResponse) {
-    setFormOpen(false)
-    setConfirmation(
-      registration.status === 'waitlisted'
-        ? `You're on the waitlist (position ${registration.position}). Your place is not confirmed yet.`
-        : `Registration confirmed for ${registration.name} (${registration.email}).`
-    )
+  function handleCountsChange(counts: SessionCounts) {
     onSessionChange({
       id: session.id,
-      registered: registration.session.registered,
-      capacity: registration.session.capacity,
-      waitlisted: registration.session.waitlisted,
+      registered: counts.registered,
+      capacity: counts.capacity,
+      waitlisted: counts.waitlisted,
     })
   }
 
@@ -100,32 +91,7 @@ function TrainingSessionCard({ session, onSessionChange }: Props) {
         )}
       </div>
 
-      <div className="session-card__actions">
-        {confirmation && (
-          <p className="session-card__confirmation" role="status">
-            {confirmation}
-          </p>
-        )}
-        {formOpen ? (
-          <RegistrationForm
-            sessionId={session.id}
-            submitLabel={isFull ? 'Join waitlist' : 'Confirm registration'}
-            onRegistered={handleRegistered}
-            onCancel={() => setFormOpen(false)}
-          />
-        ) : (
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={() => {
-              setConfirmation(null)
-              setFormOpen(true)
-            }}
-          >
-            {isFull ? 'Join Waitlist' : 'Register'}
-          </button>
-        )}
-      </div>
+      <RegistrationPanel session={session} onCountsChange={handleCountsChange} />
     </article>
   )
 }

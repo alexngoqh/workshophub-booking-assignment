@@ -58,3 +58,29 @@ export function registerForSession(sessionId: number, input: { name: string; ema
     input
   )
 }
+
+export interface RegistrationLookup {
+  id: number
+  sessionId: number
+  name: string
+  email: string
+  status: RegistrationStatus
+  position: number | null
+  createdAt: string
+}
+
+export type CancelResponse = Omit<RegistrationResponse, 'position'>
+
+export function getRegistration(sessionId: number, registrationId: number) {
+  return send<RegistrationLookup>(
+    'GET',
+    `/api/training-sessions/${sessionId}/registrations/${registrationId}`
+  )
+}
+
+export function cancelRegistration(sessionId: number, registrationId: number) {
+  return send<CancelResponse>(
+    'DELETE',
+    `/api/training-sessions/${sessionId}/registrations/${registrationId}`
+  )
+}
