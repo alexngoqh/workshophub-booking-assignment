@@ -146,10 +146,35 @@ export async function registerForSession(
   })
 }
 
+/**
+ * Flips the earliest waitlisted registration to confirmed. The conditional update means a
+ * row already taken by a concurrent cancellation is skipped and the next candidate is tried.
+ * Returns the promoted id, or null when nobody is waiting.
+ */
+async function promoteFirstWaitlisted(tx: Tx, sessionId: number): Promise<number | null> {
+  for (;;) {
+    const candidate = await tx.registration.findFirst({
+      where: { sessionId, status: 'waitlisted' },
+      orderBy: { id: 'asc' },
+    })
+    if (!candidate) return null
+    const promoted = await tx.registration.updateMany({
+      where: { id: candidate.id, status: 'waitlisted' },
+      data: { status: 'confirmed' },
+    })
+    if (promoted.count === 1) return candidate.id
+  }
+}
+
 export type CancelResult =
   | { kind: 'not_found' }
   | { kind: 'already_cancelled' }
-  | { kind: 'cancelled'; registration: RegistrationDetails; session: SessionCounts }
+  | {
+      kind: 'cancelled'
+      registration: RegistrationDetails
+      promotedRegistrationId: number | null
+      session: SessionCounts
+    }
 
 export async function cancelRegistration(
   sessionId: number,
@@ -167,7 +192,11 @@ export async function cancelRegistration(
     })
     if (changed.count === 0) return { kind: 'already_cancelled' as const }
 
-    if (current.status === 'confirmed') {
+    // A freed confirmed seat goes to the earliest waitlisted registration (LATC-5);
+    // registered stays the same (-1 +1). Otherwise the seat is released.
+    const promotedRegistrationId =
+      current.status === 'confirmed' ? await promoteFirstWaitlisted(tx, sessionId) : null
+    if (current.status === 'confirmed' && promotedRegistrationId === null) {
       await tx.trainingSession.update({
         where: { id: sessionId },
         data: { registered: { decrement: 1 } },
@@ -178,6 +207,7 @@ export async function cancelRegistration(
     return {
       kind: 'cancelled' as const,
       registration: details(updated),
+      promotedRegistrationId,
       session: await sessionCounts(tx, sessionId),
     }
   })

@@ -92,7 +92,11 @@ router.delete('/:registrationId', async (req: Request<RegistrationParams>, res: 
         res.status(409).json({ error: 'Registration is already cancelled' })
         return
       case 'cancelled':
-        res.json({ ...result.registration, session: result.session })
+        res.json({
+          ...result.registration,
+          promotedRegistrationId: result.promotedRegistrationId,
+          session: result.session,
+        })
         return
     }
   } catch (error) {
