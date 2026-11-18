@@ -4,6 +4,7 @@ const config = {
   testEnvironment: 'node',
   testMatch: ['**/tests/**/*.test.ts'],
   setupFiles: ['<rootDir>/tests/setup.ts'],
+  globalSetup: '<rootDir>/tests/globalSetup.ts',
   globals: {
     'ts-jest': {
       tsconfig: {

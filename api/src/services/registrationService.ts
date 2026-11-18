@@ -226,3 +226,18 @@ export async function getRegistration(sessionId: number, registrationId: number)
     return { ...details(registration), position }
   })
 }
+
+/** Organiser view: active registrations split by status, in registration order. */
+export async function listRegistrations(sessionId: number) {
+  const session = await prisma.trainingSession.findUnique({ where: { id: sessionId } })
+  if (!session) return null
+  const rows = await prisma.registration.findMany({
+    where: { sessionId, status: { in: ACTIVE_STATUSES } },
+    orderBy: { id: 'asc' },
+  })
+  const all = rows.map(details)
+  return {
+    confirmed: all.filter((r) => r.status === 'confirmed'),
+    waitlisted: all.filter((r) => r.status === 'waitlisted'),
+  }
+}
