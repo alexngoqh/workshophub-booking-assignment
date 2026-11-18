@@ -1,11 +1,11 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { API_URL, findSession, resetDatabase } from './helpers'
 
 const TITLE = 'Secure Coding with AI Assistance' // capacity 16
 
 test.beforeEach(() => resetDatabase())
 
-function card(page: import('@playwright/test').Page, title = TITLE) {
+function card(page: import('./fixtures').Page, title = TITLE) {
   return page.locator('.session-card').filter({ hasText: title })
 }
 
@@ -61,22 +61,6 @@ test.describe('LATC-2: register for a training session', () => {
 
     await expect(c.getByRole('alert')).toContainText('already registered')
     await expect(c.getByText('1 / 16 registered')).toBeVisible()
-  })
-
-  test('disables Register when the session is full', async ({ page, request }) => {
-    const session = await findSession(request, TITLE)
-    for (let i = 0; i < session.capacity; i++) {
-      const res = await request.post(
-        `${API_URL}/api/training-sessions/${session.id}/registrations`,
-        { data: { name: `P${i}`, email: `p${i}@example.com` } }
-      )
-      expect(res.status()).toBe(201)
-    }
-
-    await page.goto('/')
-    const c = card(page)
-    await expect(c.getByText('16 / 16 registered')).toBeVisible()
-    await expect(c.getByRole('button', { name: 'Full' })).toBeDisabled()
   })
 
   test('Back closes the form without registering', async ({ page }) => {

@@ -28,13 +28,27 @@ async function send<T>(method: string, path: string, body?: unknown): Promise<Ap
   }
 }
 
+export type RegistrationStatus = 'confirmed' | 'waitlisted' | 'cancelled'
+
+export interface SessionCounts {
+  id: number
+  title: string
+  date: string
+  registered: number
+  capacity: number
+  waitlisted: number
+}
+
 export interface RegistrationResponse {
   id: number
   sessionId: number
   name: string
   email: string
+  status: RegistrationStatus
+  /** Present when status is "waitlisted" (1-based). */
+  position?: number
   createdAt: string
-  session: { id: number; title: string; date: string; registered: number; capacity: number }
+  session: SessionCounts
 }
 
 export function registerForSession(sessionId: number, input: { name: string; email: string }) {

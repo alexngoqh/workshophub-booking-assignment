@@ -21,6 +21,8 @@ export default defineConfig({
     baseURL: `http://localhost:${APP_PORT}`,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    // SLOW_MO (ms) slows each browser action down so a headed run can be watched.
+    launchOptions: { slowMo: Number(process.env.SLOW_MO ?? 0) },
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [

@@ -22,21 +22,83 @@ export function validateRegistrationInput(body: unknown): string[] {
   return errors
 }
 
+export const REGISTRATION_STATUS = {
+  confirmed: 'confirmed',
+  waitlisted: 'waitlisted',
+  cancelled: 'cancelled',
+} as const
+export type RegistrationStatus = (typeof REGISTRATION_STATUS)[keyof typeof REGISTRATION_STATUS]
+
+const ACTIVE_STATUSES: RegistrationStatus[] = ['confirmed', 'waitlisted']
+
+export interface RegistrationDetails {
+  id: number
+  sessionId: number
+  name: string
+  email: string
+  status: RegistrationStatus
+  createdAt: Date
+}
+
+export interface SessionCounts {
+  id: number
+  title: string
+  date: Date
+  registered: number
+  capacity: number
+  waitlisted: number
+}
+
 export type RegisterResult =
   | { kind: 'session_not_found' }
   | { kind: 'duplicate' }
-  | { kind: 'full' }
+  | { kind: 'confirmed'; registration: RegistrationDetails; session: SessionCounts }
   | {
-      kind: 'confirmed'
-      registration: {
-        id: number
-        sessionId: number
-        name: string
-        email: string
-        createdAt: Date
-      }
-      session: { id: number; title: string; date: Date; registered: number; capacity: number }
+      kind: 'waitlisted'
+      registration: RegistrationDetails
+      position: number
+      session: SessionCounts
     }
+
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
+
+async function sessionCounts(tx: Tx, sessionId: number): Promise<SessionCounts> {
+  const s = await tx.trainingSession.findUniqueOrThrow({ where: { id: sessionId } })
+  const waitlisted = await tx.registration.count({ where: { sessionId, status: 'waitlisted' } })
+  return {
+    id: s.id,
+    title: s.title,
+    date: s.date,
+    registered: s.registered,
+    capacity: s.capacity,
+    waitlisted,
+  }
+}
+
+function details(r: {
+  id: number
+  sessionId: number
+  name: string
+  email: string
+  status: string
+  createdAt: Date
+}): RegistrationDetails {
+  return {
+    id: r.id,
+    sessionId: r.sessionId,
+    name: r.name,
+    email: r.email,
+    status: r.status as RegistrationStatus,
+    createdAt: r.createdAt,
+  }
+}
+
+/** 1-based position among waitlisted registrations of the session, ordered by id. */
+async function waitlistPosition(tx: Tx, sessionId: number, registrationId: number) {
+  return tx.registration.count({
+    where: { sessionId, status: 'waitlisted', id: { lte: registrationId } },
+  })
+}
 
 export async function registerForSession(
   sessionId: number,
@@ -49,7 +111,9 @@ export async function registerForSession(
     const session = await tx.trainingSession.findUnique({ where: { id: sessionId } })
     if (!session) return { kind: 'session_not_found' as const }
 
-    const existing = await tx.registration.findFirst({ where: { sessionId, email } })
+    const existing = await tx.registration.findFirst({
+      where: { sessionId, email, status: { in: ACTIVE_STATUSES } },
+    })
     if (existing) return { kind: 'duplicate' as const }
 
     // Claim a seat with a single conditional UPDATE so two concurrent requests can never
@@ -58,27 +122,26 @@ export async function registerForSession(
       where: { id: sessionId, registered: { lt: session.capacity } },
       data: { registered: { increment: 1 } },
     })
-    if (claimed.count === 0) return { kind: 'full' as const }
 
-    const registration = await tx.registration.create({ data: { sessionId, name, email } })
-    const updated = await tx.trainingSession.findUniqueOrThrow({ where: { id: sessionId } })
+    if (claimed.count === 0) {
+      const registration = await tx.registration.create({
+        data: { sessionId, name, email, status: 'waitlisted' },
+      })
+      return {
+        kind: 'waitlisted' as const,
+        registration: details(registration),
+        position: await waitlistPosition(tx, sessionId, registration.id),
+        session: await sessionCounts(tx, sessionId),
+      }
+    }
 
+    const registration = await tx.registration.create({
+      data: { sessionId, name, email, status: 'confirmed' },
+    })
     return {
       kind: 'confirmed' as const,
-      registration: {
-        id: registration.id,
-        sessionId: registration.sessionId,
-        name: registration.name,
-        email: registration.email,
-        createdAt: registration.createdAt,
-      },
-      session: {
-        id: updated.id,
-        title: updated.title,
-        date: updated.date,
-        registered: updated.registered,
-        capacity: updated.capacity,
-      },
+      registration: details(registration),
+      session: await sessionCounts(tx, sessionId),
     }
   })
 }

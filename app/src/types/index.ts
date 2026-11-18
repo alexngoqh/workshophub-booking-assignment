@@ -5,6 +5,7 @@ export interface TrainingSession {
   date: string
   capacity: number
   registered: number
+  waitlisted: number
   location: string
   deliveryMode: string
   status: string
