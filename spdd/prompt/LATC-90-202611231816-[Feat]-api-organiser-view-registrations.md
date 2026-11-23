@@ -164,10 +164,10 @@ Test-first.
      - any other error → the error message
    - Every state has a "← All sessions" link.
    - Render:
-     - title, date (`en-SG` long), location, description
-     - `<section>` titled "Registrations"
+     - `<h2>` title, then date (`en-SG` long), location, description
+     - a `<section>` with heading `<h3>Registrations</h3>`
      - when both lists are empty: "No registrations yet"
-     - otherwise `<h3>Confirmed (N)</h3>` and `<h3>Waitlist (N)</h3>`, each a list of name · email · registration date
+     - otherwise `<h4>Confirmed (N)</h4>` and `<h4>Waitlist (N)</h4>` (nested under "Registrations"), each a list of name · email · registration date
 3. `pages/SessionDetailPage.css`: minimal styles in the `session-detail__*` naming.
 4. `TrainingSessionCard.tsx`: wrap the title text in `<Link to={'/sessions/' + session.id} className="session-card__title-link">`.
 
