@@ -1,4 +1,6 @@
+import { useState, type FormEvent } from 'react'
 import type { TrainingSession } from '../types'
+import { registerForSession } from '../api'
 import './TrainingSessionCard.css'
 
 interface Props {
@@ -31,8 +33,39 @@ function deliveryModeLabel(mode: string): string {
 }
 
 function TrainingSessionCard({ session }: Props) {
-  const spotsLeft = session.capacity - session.registered
+  const [registered, setRegistered] = useState(session.registered)
+  const [formOpen, setFormOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [confirmation, setConfirmation] = useState<string | null>(null)
+
+  const spotsLeft = session.capacity - registered
   const isFull = spotsLeft <= 0
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSubmitting(true)
+    setError(null)
+
+    const result = await registerForSession(session.id, { name, email })
+    setSubmitting(false)
+
+    if (result.ok) {
+      setRegistered(result.data.session.registered)
+      setFormOpen(false)
+      setName('')
+      setEmail('')
+      setConfirmation(`You're registered for ${result.data.session.title}!`)
+      return
+    }
+
+    setError(result.error)
+    if (result.status === 409) {
+      setRegistered(session.capacity)
+    }
+  }
 
   return (
     <article className={`session-card ${isFull ? 'session-card--full' : ''}`}>
@@ -62,7 +95,7 @@ function TrainingSessionCard({ session }: Props) {
         <div className="meta-item">
           <span className="meta-label">Capacity</span>
           <span className="meta-value">
-            {session.registered} / {session.capacity} registered
+            {registered} / {session.capacity} registered
             {!isFull && (
               <span className="spots-left">
                 {' '}
@@ -72,6 +105,57 @@ function TrainingSessionCard({ session }: Props) {
           </span>
         </div>
       </div>
+
+      {confirmation && (
+        <p className="session-card__confirmation" role="status">
+          {confirmation}
+        </p>
+      )}
+
+      {formOpen ? (
+        <form className="session-card__form" onSubmit={handleSubmit} noValidate>
+          <label className="session-card__field">
+            Name
+            <input value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label className="session-card__field">
+            Email
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          {error && (
+            <p className="session-card__error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="session-card__actions">
+            <button type="submit" className="session-card__button" disabled={submitting}>
+              {submitting ? 'Submitting…' : 'Confirm registration'}
+            </button>
+            <button
+              type="button"
+              className="session-card__button session-card__button--secondary"
+              onClick={() => {
+                setFormOpen(false)
+                setError(null)
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          className="session-card__button"
+          disabled={isFull}
+          onClick={() => {
+            setFormOpen(true)
+            setConfirmation(null)
+          }}
+        >
+          {isFull ? 'Full' : 'Register'}
+        </button>
+      )}
     </article>
   )
 }
