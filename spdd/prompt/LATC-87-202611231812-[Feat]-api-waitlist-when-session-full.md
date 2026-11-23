@@ -2,8 +2,8 @@
 
 > Team copy of LATC-3. Prerequisite LATC-2 is implemented as **LATC-86** on `latc-86-register-for-session` (this branch's base), so the rebase note below is already satisfied. Commit prefix `[LATC-87]`.
 
-> Source analysis: `spdd/analysis/LATC-3-202611231421-[Analysis]-waitlist-when-session-full.md`
-> **Prerequisite**: LATC-2 is implemented per `spdd/prompt/LATC-2-202611231415-[Feat]-api-register-for-training-session.md` (the `Registration` model, `registrationService.registerForSession`, `routes/registrations.ts`, `app/src/api.ts`, and the register form on `TrainingSessionCard`). This canvas is a **delta** on that code. Rebase `latc-3-waitlist-day4` onto the finished LATC-2 branch before generating.
+> Source analysis: `spdd/analysis/LATC-87-202611231812-[Analysis]-waitlist-when-session-full.md` (carried over from LATC-3)
+> **Prerequisite**: LATC-86 is implemented per `spdd/prompt/LATC-86-202611231811-[Feat]-api-register-for-training-session.md` (the `Registration` model, `registrationService.registerForSession`, `routes/registrations.ts`, `app/src/api.ts`, and the register form on `TrainingSessionCard`). This canvas is a **delta** on that code.
 > Open questions from the analysis, resolved as defaults:
 >
 > - **W1 · 202 body**: the same shape as 201 (registration + session counts), plus `position`. Both bodies include `status`.
