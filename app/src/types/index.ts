@@ -11,3 +11,22 @@ export interface TrainingSession {
   createdAt: string
   updatedAt: string
 }
+
+export interface RegistrationInput {
+  name: string
+  email: string
+}
+
+export interface RegistrationResponse {
+  id: number
+  sessionId: number
+  name: string
+  email: string
+  createdAt: string
+  session: {
+    id: number
+    title: string
+    registered: number
+    capacity: number
+  }
+}
