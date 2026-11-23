@@ -179,3 +179,19 @@
   font-weight: 500;
   color: #b45309;
 }
+
+.session-card__status--confirmed {
+  color: #16a34a;
+}
+
+.session-card__cancel {
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid #b91c1c;
+}
+
+.session-card__cancelled {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
