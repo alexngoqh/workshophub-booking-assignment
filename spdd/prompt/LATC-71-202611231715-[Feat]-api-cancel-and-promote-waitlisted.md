@@ -298,7 +298,7 @@ Test-first: write each test, watch it fail, then implement. **Step 0 is a gate. 
    - Promotion never writes `registered`.
 5. **Validation**: ids parse as positive integers with the shared `parseId`. Request bodies on DELETE and GET are ignored.
 6. **Logging**: errors only, with a context prefix. Don't log names, emails or registration ids on success paths.
-7. **Testing**: TDD. Integration tests seed their own sessions and registrations, assert `registered === count(confirmed)` after each mutation, and clean up in `afterAll`. Unit tests mock `lib/prisma`.
+7. **Testing**: TDD. Integration tests seed their own sessions and registrations, assert `registered === count(confirmed)` after each mutation, and clean up in `afterAll`. Unit tests mock `lib/prisma`. Integration tests start the app once per file with `app.listen(0, '127.0.0.1')` and send requests to that server, not `request(app)`: supertest's default listens on `::` but sends to `127.0.0.1`, so on a machine with other local servers a request can hit a foreign process (observed: 1 in 1,000 requests got another app's 401).
 8. **Style and docs**: Prettier (no semicolons, single quotes). Commits prefixed `[LATC-71]`. Short comments only for non-obvious choices (net-zero promotion, id ordering, the retry on a lost race, the LATC-8 hook).
 
 ## Safeguards

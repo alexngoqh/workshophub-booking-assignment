@@ -1,6 +1,15 @@
+import type { Server } from 'http'
 import request from 'supertest'
 import app from '../../src/app'
 import prisma from '../../src/lib/prisma'
+
+// One server bound to 127.0.0.1: supertest's per-request server listens on `::` but connects
+// to 127.0.0.1, so another local process holding that IPv4 port can answer instead.
+let server: Server
+
+beforeAll((done) => {
+  server = app.listen(0, '127.0.0.1', done)
+})
 
 const createdSessionIds: number[] = []
 
@@ -21,6 +30,7 @@ async function createSession(capacity: number, registered = 0): Promise<number> 
 }
 
 afterAll(async () => {
+  await new Promise((resolve) => server.close(resolve))
   await prisma.trainingSession.deleteMany({ where: { id: { in: createdSessionIds } } })
   await prisma.$disconnect()
 })
@@ -29,7 +39,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
   it('returns 201 with the registration and updated session counts', async () => {
     const sessionId = await createSession(5)
 
-    const res = await request(app)
+    const res = await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({ name: 'Ada Lovelace', email: 'ada@example.com' })
 
@@ -47,7 +57,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
   it('increments registered by exactly 1 in the database', async () => {
     const sessionId = await createSession(5, 2)
 
-    await request(app)
+    await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({ name: 'Grace Hopper', email: 'grace@example.com' })
 
@@ -58,7 +68,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
   it('trims name and email and lower-cases the email', async () => {
     const sessionId = await createSession(5)
 
-    const res = await request(app)
+    const res = await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({ name: '  Alan Turing  ', email: '  Alan@Example.COM ' })
 
@@ -70,7 +80,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
   it('returns 400 listing each missing field', async () => {
     const sessionId = await createSession(5)
 
-    const res = await request(app)
+    const res = await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({})
 
@@ -83,7 +93,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
   it('returns 400 for a blank name', async () => {
     const sessionId = await createSession(5)
 
-    const res = await request(app)
+    const res = await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({ name: '  ', email: 'a@b.co' })
 
@@ -93,7 +103,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
   it('returns 400 for a malformed email', async () => {
     const sessionId = await createSession(5)
 
-    const res = await request(app)
+    const res = await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({ name: 'Ada', email: 'not-an-email' })
 
@@ -102,7 +112,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
   })
 
   it('returns 404 for an unknown session and creates no registration', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .post('/api/training-sessions/999999/registrations')
       .send({ name: 'Ada', email: 'ada@example.com' })
 
@@ -111,7 +121,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
   })
 
   it('returns 400 for a non-numeric session id', async () => {
-    const res = await request(app)
+    const res = await request(server)
       .post('/api/training-sessions/abc/registrations')
       .send({ name: 'Ada', email: 'ada@example.com' })
 
@@ -122,7 +132,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
   it('returns 202 waitlisted for a full session without touching registered', async () => {
     const sessionId = await createSession(1, 1)
 
-    const res = await request(app)
+    const res = await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({ name: 'Ada', email: 'ada@example.com' })
 
@@ -140,7 +150,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
 
     const positions: number[] = []
     for (const n of [1, 2, 3]) {
-      const res = await request(app)
+      const res = await request(server)
         .post(`/api/training-sessions/${sessionId}/registrations`)
         .send({ name: `Waiter ${n}`, email: `waiter${n}@example.com` })
       positions.push(res.body.position)
@@ -152,13 +162,13 @@ describe('POST /api/training-sessions/:id/registrations', () => {
   it('tracks the waitlisted count separately from registered', async () => {
     const sessionId = await createSession(1)
 
-    await request(app)
+    await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({ name: 'Seat', email: 'seat@example.com' })
-    await request(app)
+    await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({ name: 'Wait 1', email: 'wait1@example.com' })
-    const last = await request(app)
+    const last = await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({ name: 'Wait 2', email: 'wait2@example.com' })
 
@@ -170,7 +180,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
   it('waitlists the first registrant of a capacity-0 session at position 1', async () => {
     const sessionId = await createSession(0)
 
-    const res = await request(app)
+    const res = await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({ name: 'Ada', email: 'ada@example.com' })
 
@@ -183,7 +193,7 @@ describe('POST /api/training-sessions/:id/registrations', () => {
 
     const responses = await Promise.all(
       [1, 2, 3, 4, 5, 6].map((n) =>
-        request(app)
+        request(server)
           .post(`/api/training-sessions/${sessionId}/registrations`)
           .send({ name: `Person ${n}`, email: `person${n}@example.com` })
       )
@@ -230,9 +240,9 @@ describe('cancel and promote', () => {
   }
 
   const cancel = (sessionId: number | string, regId: number | string) =>
-    request(app).delete(`/api/training-sessions/${sessionId}/registrations/${regId}`)
+    request(server).delete(`/api/training-sessions/${sessionId}/registrations/${regId}`)
   const lookup = (sessionId: number | string, regId: number | string) =>
-    request(app).get(`/api/training-sessions/${sessionId}/registrations/${regId}`)
+    request(server).get(`/api/training-sessions/${sessionId}/registrations/${regId}`)
 
   it('cancels a confirmed registration and decrements when the waitlist is empty', async () => {
     const { sessionId, confirmedIds } = await seed(2, 2, 0)
