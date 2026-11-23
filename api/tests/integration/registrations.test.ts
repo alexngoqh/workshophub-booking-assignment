@@ -257,15 +257,73 @@ describe('cancel', () => {
     await assertCounterConsistent(sessionId)
   })
 
-  it('does not promote anyone (that is LATC-89)', async () => {
-    const { sessionId, confirmedIds, waitlistedIds } = await seed(1, 1, 1)
+  it('promotes the first waitlisted registration and keeps registered unchanged', async () => {
+    const { sessionId, confirmedIds, waitlistedIds } = await seed(1, 1, 2)
 
     const res = await cancel(sessionId, confirmedIds[0])
 
-    expect(res.body.session.registered).toBe(0)
-    const waiting = await prisma.registration.findUniqueOrThrow({ where: { id: waitlistedIds[0] } })
-    expect(waiting.status).toBe('waitlisted')
+    expect(res.body.promotedRegistrationId).toBe(waitlistedIds[0])
+    expect(res.body.session.registered).toBe(1)
+    expect(res.body.session.waitlisted).toBe(1)
+    const first = await prisma.registration.findUniqueOrThrow({ where: { id: waitlistedIds[0] } })
+    const second = await prisma.registration.findUniqueOrThrow({ where: { id: waitlistedIds[1] } })
+    expect(first.status).toBe('confirmed')
+    expect(second.status).toBe('waitlisted')
     await assertCounterConsistent(sessionId)
+
+    const again = await cancel(sessionId, waitlistedIds[0])
+    expect(again.body.promotedRegistrationId).toBe(waitlistedIds[1])
+    await assertCounterConsistent(sessionId)
+  })
+
+  it('reports no promotion and releases the seat when the waitlist is empty', async () => {
+    const { sessionId, confirmedIds } = await seed(2, 2, 0)
+
+    const res = await cancel(sessionId, confirmedIds[0])
+
+    expect(res.body.promotedRegistrationId).toBeNull()
+    expect(res.body.session.registered).toBe(1)
+  })
+
+  it('does not promote when a waitlisted registration is cancelled', async () => {
+    const { sessionId, waitlistedIds } = await seed(1, 1, 2)
+
+    expect((await cancel(sessionId, waitlistedIds[0])).body.promotedRegistrationId).toBeNull()
+  })
+
+  it('does not promote when the session is over capacity', async () => {
+    const { sessionId, confirmedIds } = await seed(2, 2, 1)
+    await prisma.trainingSession.update({ where: { id: sessionId }, data: { capacity: 1 } })
+
+    const res = await cancel(sessionId, confirmedIds[0])
+
+    expect(res.body.promotedRegistrationId).toBeNull()
+    expect(res.body.session.registered).toBe(1)
+  })
+
+  it('promotes two different people on concurrent cancellations', async () => {
+    const { sessionId, confirmedIds, waitlistedIds } = await seed(2, 2, 2)
+
+    const responses = await Promise.all(confirmedIds.map((id) => cancel(sessionId, id)))
+
+    expect(responses.map((r) => r.status)).toEqual([200, 200])
+    const promoted = responses.map((r) => r.body.promotedRegistrationId as number).sort()
+    expect(promoted).toEqual([...waitlistedIds].sort())
+    const session = await prisma.trainingSession.findUniqueOrThrow({ where: { id: sessionId } })
+    expect(session.registered).toBe(2)
+    expect(await prisma.registration.count({ where: { sessionId, status: 'waitlisted' } })).toBe(0)
+    await assertCounterConsistent(sessionId)
+  })
+
+  it('shows the promoted registration as confirmed via GET', async () => {
+    const { sessionId, confirmedIds, waitlistedIds } = await seed(1, 1, 1)
+
+    await cancel(sessionId, confirmedIds[0])
+
+    expect((await lookup(sessionId, waitlistedIds[0])).body).toMatchObject({
+      status: 'confirmed',
+      position: null,
+    })
   })
 
   it('lets a waitlisted employee leave without changing registered', async () => {
