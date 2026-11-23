@@ -40,6 +40,8 @@ function TrainingSessionCard({ session }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmation, setConfirmation] = useState<string | null>(null)
+  const [waitlisted, setWaitlisted] = useState<number | null>(null)
+  const [myPosition, setMyPosition] = useState<number | null>(null)
 
   const spotsLeft = session.capacity - registered
   const isFull = spotsLeft <= 0
@@ -52,19 +54,26 @@ function TrainingSessionCard({ session }: Props) {
     const result = await registerForSession(session.id, { name, email })
     setSubmitting(false)
 
-    if (result.ok) {
-      setRegistered(result.data.session.registered)
-      setFormOpen(false)
-      setName('')
-      setEmail('')
-      setConfirmation(`You're registered for ${result.data.session.title}!`)
+    if (!result.ok) {
+      setError(result.error)
       return
     }
 
-    setError(result.error)
-    if (result.status === 409) {
-      setRegistered(session.capacity)
+    const { data } = result
+    setRegistered(data.session.registered)
+    setWaitlisted(data.session.waitlisted)
+    if (data.status === 'waitlisted') {
+      const position = data.position ?? null
+      setMyPosition(position)
+      setConfirmation(
+        `You're on the waitlist for ${data.session.title} (position ${position}). You are not confirmed yet.`
+      )
+    } else {
+      setConfirmation(`You're registered for ${data.session.title}!`)
     }
+    setFormOpen(false)
+    setName('')
+    setEmail('')
   }
 
   return (
@@ -102,9 +111,16 @@ function TrainingSessionCard({ session }: Props) {
                 ({spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left)
               </span>
             )}
+            {waitlisted !== null && waitlisted > 0 && (
+              <span className="session-card__waitlist-count"> · {waitlisted} on waitlist</span>
+            )}
           </span>
         </div>
       </div>
+
+      {myPosition !== null && (
+        <p className="session-card__my-status">Your status: Waitlisted (position {myPosition})</p>
+      )}
 
       {confirmation && (
         <p className="session-card__confirmation" role="status">
@@ -129,7 +145,7 @@ function TrainingSessionCard({ session }: Props) {
           )}
           <div className="session-card__actions">
             <button type="submit" className="session-card__button" disabled={submitting}>
-              {submitting ? 'Submitting…' : 'Confirm registration'}
+              {submitting ? 'Submitting…' : isFull ? 'Join waitlist' : 'Confirm registration'}
             </button>
             <button
               type="button"
@@ -146,14 +162,14 @@ function TrainingSessionCard({ session }: Props) {
       ) : (
         <button
           type="button"
-          className="session-card__button"
-          disabled={isFull}
+          className={`session-card__button ${isFull ? 'session-card__button--waitlist' : ''}`}
+          disabled={submitting}
           onClick={() => {
             setFormOpen(true)
             setConfirmation(null)
           }}
         >
-          {isFull ? 'Full' : 'Register'}
+          {isFull ? 'Join Waitlist' : 'Register'}
         </button>
       )}
     </article>

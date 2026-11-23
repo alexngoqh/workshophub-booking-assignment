@@ -35,8 +35,10 @@ model Registration {
   session   TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   name      String
   email     String
+  status    String          @default("confirmed") // confirmed | waitlisted | cancelled
   createdAt DateTime        @default(now())
 
   @@index([sessionId])
+  @@index([sessionId, status])
   @@map("registrations")
 }

@@ -22,11 +22,16 @@ export interface RegistrationResponse {
   sessionId: number
   name: string
   email: string
+  status: RegistrationStatus
   createdAt: string
+  position?: number
   session: {
     id: number
     title: string
     registered: number
     capacity: number
+    waitlisted: number
   }
 }
+
+export type RegistrationStatus = 'confirmed' | 'waitlisted' | 'cancelled'
