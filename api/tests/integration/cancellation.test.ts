@@ -1,5 +1,4 @@
-import request from 'supertest'
-import app from '../../src/app'
+import { api } from './server'
 import prisma from '../../src/lib/prisma'
 import { createTestSession, deleteTestSessions } from './helpers'
 
@@ -19,7 +18,7 @@ const regUrl = (id: number) => `/api/training-sessions/${id}/registrations`
 const oneUrl = (id: number, rid: number | string) => `${regUrl(id)}/${rid}`
 
 async function register(sessionId: number, who: string) {
-  const res = await request(app)
+  const res = await api()
     .post(regUrl(sessionId))
     .send({ name: who, email: `${who}@example.com` })
   return res.body as { id: number; status: string; position?: number }
@@ -33,7 +32,7 @@ describe('DELETE /api/training-sessions/:id/registrations/:registrationId (LATC-
     const a = await register(s.id, 'a')
     await register(s.id, 'b')
 
-    const res = await request(app).delete(oneUrl(s.id, a.id))
+    const res = await api().delete(oneUrl(s.id, a.id))
 
     expect(res.status).toBe(200)
     expect(res.body).toMatchObject({ id: a.id, status: 'cancelled', promotedRegistrationId: null })
@@ -49,7 +48,7 @@ describe('DELETE /api/training-sessions/:id/registrations/:registrationId (LATC-
     const w = await register(s.id, 'w')
     expect(w.status).toBe('waitlisted')
 
-    const res = await request(app).delete(oneUrl(s.id, w.id))
+    const res = await api().delete(oneUrl(s.id, w.id))
 
     expect(res.status).toBe(200)
     expect(res.body.promotedRegistrationId).toBeNull()
@@ -58,7 +57,7 @@ describe('DELETE /api/training-sessions/:id/registrations/:registrationId (LATC-
 
   it('returns 404 for an unknown registration', async () => {
     const s = await session()
-    const res = await request(app).delete(oneUrl(s.id, 999999))
+    const res = await api().delete(oneUrl(s.id, 999999))
     expect(res.status).toBe(404)
   })
 
@@ -67,7 +66,7 @@ describe('DELETE /api/training-sessions/:id/registrations/:registrationId (LATC-
     const s2 = await session()
     const a = await register(s1.id, 'a')
 
-    const res = await request(app).delete(oneUrl(s2.id, a.id))
+    const res = await api().delete(oneUrl(s2.id, a.id))
 
     expect(res.status).toBe(404)
     expect((await counts(s1.id)).registered).toBe(1)
@@ -78,8 +77,8 @@ describe('DELETE /api/training-sessions/:id/registrations/:registrationId (LATC-
     const a = await register(s.id, 'a')
     await register(s.id, 'b')
 
-    await request(app).delete(oneUrl(s.id, a.id))
-    const again = await request(app).delete(oneUrl(s.id, a.id))
+    await api().delete(oneUrl(s.id, a.id))
+    const again = await api().delete(oneUrl(s.id, a.id))
 
     expect(again.status).toBe(409)
     expect((await counts(s.id)).registered).toBe(1)
@@ -91,7 +90,7 @@ describe('DELETE /api/training-sessions/:id/registrations/:registrationId (LATC-
     await register(s.id, 'b')
 
     const results = await Promise.all(
-      Array.from({ length: 5 }, () => request(app).delete(oneUrl(s.id, a.id)))
+      Array.from({ length: 5 }, () => api().delete(oneUrl(s.id, a.id)))
     )
 
     expect(results.filter((r) => r.status === 200)).toHaveLength(1)
@@ -100,16 +99,16 @@ describe('DELETE /api/training-sessions/:id/registrations/:registrationId (LATC-
 
   it('returns 400 for a non-numeric registration id', async () => {
     const s = await session()
-    const res = await request(app).delete(oneUrl(s.id, 'abc'))
+    const res = await api().delete(oneUrl(s.id, 'abc'))
     expect(res.status).toBe(400)
   })
 
   it('allows the same email to register again after cancelling', async () => {
     const s = await session()
     const a = await register(s.id, 'a')
-    await request(app).delete(oneUrl(s.id, a.id))
+    await api().delete(oneUrl(s.id, a.id))
 
-    const res = await request(app).post(regUrl(s.id)).send({ name: 'a', email: 'a@example.com' })
+    const res = await api().post(regUrl(s.id)).send({ name: 'a', email: 'a@example.com' })
 
     expect(res.status).toBe(201)
   })
@@ -122,17 +121,17 @@ describe('GET /api/training-sessions/:id/registrations/:registrationId (LATC-4)'
     await register(s.id, 'w1')
     const w2 = await register(s.id, 'w2')
 
-    const confirmed = await request(app).get(oneUrl(s.id, a.id))
+    const confirmed = await api().get(oneUrl(s.id, a.id))
     expect(confirmed.status).toBe(200)
     expect(confirmed.body).toMatchObject({ status: 'confirmed', position: null, name: 'a' })
 
-    const waiting = await request(app).get(oneUrl(s.id, w2.id))
+    const waiting = await api().get(oneUrl(s.id, w2.id))
     expect(waiting.body).toMatchObject({ status: 'waitlisted', position: 2 })
   })
 
   it('returns 404 for an unknown registration', async () => {
     const s = await session()
-    const res = await request(app).get(oneUrl(s.id, 999999))
+    const res = await api().get(oneUrl(s.id, 999999))
     expect(res.status).toBe(404)
   })
 })
@@ -147,7 +146,7 @@ describe('Promote first waitlisted employee after cancellation (LATC-5)', () => 
     const w1 = await register(s.id, 'w1')
     const w2 = await register(s.id, 'w2')
 
-    const res = await request(app).delete(oneUrl(s.id, a.id))
+    const res = await api().delete(oneUrl(s.id, a.id))
 
     expect(res.status).toBe(200)
     expect(res.body).toMatchObject({ status: 'cancelled', promotedRegistrationId: w1.id })
@@ -155,7 +154,7 @@ describe('Promote first waitlisted employee after cancellation (LATC-5)', () => 
     expect(await status(w1.id)).toBe('confirmed')
     expect(await status(w2.id)).toBe('waitlisted')
 
-    const w2Now = await request(app).get(oneUrl(s.id, w2.id))
+    const w2Now = await api().get(oneUrl(s.id, w2.id))
     expect(w2Now.body.position).toBe(1)
   })
 
@@ -164,7 +163,7 @@ describe('Promote first waitlisted employee after cancellation (LATC-5)', () => 
     const a = await register(s.id, 'a')
     await register(s.id, 'b')
 
-    const res = await request(app).delete(oneUrl(s.id, a.id))
+    const res = await api().delete(oneUrl(s.id, a.id))
 
     expect(res.body.promotedRegistrationId).toBeNull()
     expect(res.body.session.registered).toBe(1)
@@ -176,7 +175,7 @@ describe('Promote first waitlisted employee after cancellation (LATC-5)', () => 
     const w1 = await register(s.id, 'w1')
     const w2 = await register(s.id, 'w2')
 
-    const res = await request(app).delete(oneUrl(s.id, w1.id))
+    const res = await api().delete(oneUrl(s.id, w1.id))
 
     expect(res.body.promotedRegistrationId).toBeNull()
     expect(await status(w2.id)).toBe('waitlisted')
@@ -192,7 +191,7 @@ describe('Promote first waitlisted employee after cancellation (LATC-5)', () => 
     ]
     const waiting = [await register(s.id, 'w1'), await register(s.id, 'w2')]
 
-    const results = await Promise.all(confirmed.map((c) => request(app).delete(oneUrl(s.id, c.id))))
+    const results = await Promise.all(confirmed.map((c) => api().delete(oneUrl(s.id, c.id))))
 
     const promoted = results.map((r) => r.body.promotedRegistrationId).filter((x) => x !== null)
     expect(promoted.sort()).toEqual(waiting.map((w) => w.id).sort())

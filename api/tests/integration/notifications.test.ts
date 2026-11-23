@@ -1,5 +1,4 @@
-import request from 'supertest'
-import app from '../../src/app'
+import { api } from './server'
 import prisma from '../../src/lib/prisma'
 import {
   flushNotifications,
@@ -33,7 +32,7 @@ const url = (id: number) => `/api/training-sessions/${id}/registrations`
 describe('Registration notifications (LATC-8)', () => {
   it('emits a confirmed notification with employee and session details', async () => {
     const s = await session()
-    const res = await request(app).post(url(s.id)).send({ name: 'Ada', email: 'ada@example.com' })
+    const res = await api().post(url(s.id)).send({ name: 'Ada', email: 'ada@example.com' })
     await flushNotifications()
 
     expect(res.status).toBe(201)
@@ -50,9 +49,9 @@ describe('Registration notifications (LATC-8)', () => {
 
   it('does not notify when the employee is only waitlisted', async () => {
     const s = await session(1)
-    await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
+    await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
     sent = []
-    const res = await request(app).post(url(s.id)).send({ name: 'B', email: 'b@example.com' })
+    const res = await api().post(url(s.id)).send({ name: 'B', email: 'b@example.com' })
     await flushNotifications()
 
     expect(res.status).toBe(202)
@@ -61,12 +60,12 @@ describe('Registration notifications (LATC-8)', () => {
 
   it('emits a promoted notification for the promoted employee', async () => {
     const s = await session(1)
-    const a = await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
-    await request(app).post(url(s.id)).send({ name: 'Wendy', email: 'wendy@example.com' })
+    const a = await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
+    await api().post(url(s.id)).send({ name: 'Wendy', email: 'wendy@example.com' })
     await flushNotifications()
     sent = []
 
-    await request(app).delete(`${url(s.id)}/${a.body.id}`)
+    await api().delete(`${url(s.id)}/${a.body.id}`)
     await flushNotifications()
 
     expect(sent).toEqual([
@@ -76,11 +75,11 @@ describe('Registration notifications (LATC-8)', () => {
 
   it('does not notify when a cancellation promotes nobody', async () => {
     const s = await session()
-    const a = await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
+    const a = await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
     await flushNotifications()
     sent = []
 
-    await request(app).delete(`${url(s.id)}/${a.body.id}`)
+    await api().delete(`${url(s.id)}/${a.body.id}`)
     await flushNotifications()
 
     expect(sent).toEqual([])
@@ -95,7 +94,7 @@ describe('Registration notifications (LATC-8)', () => {
     ])
     const s = await session()
 
-    const res = await request(app).post(url(s.id)).send({ name: 'Ada', email: 'ada@example.com' })
+    const res = await api().post(url(s.id)).send({ name: 'Ada', email: 'ada@example.com' })
     await flushNotifications()
 
     expect(res.status).toBe(201)

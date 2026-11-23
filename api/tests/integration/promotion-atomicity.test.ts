@@ -1,5 +1,4 @@
-import request from 'supertest'
-import app from '../../src/app'
+import { api } from './server'
 import prisma from '../../src/lib/prisma'
 import { createTestSession, deleteTestSessions } from './helpers'
 import { failInsideTransactions } from './faultInjection'
@@ -33,8 +32,8 @@ const auditCount = (registrationId: number) => prisma.auditLog.count({ where: { 
 describe('Cancellation and promotion are atomic (LATC-5)', () => {
   it('a failure while promoting rolls back the cancellation as well', async () => {
     const s = await session(1)
-    const a = (await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })).body
-    const w = (await request(app).post(url(s.id)).send({ name: 'W', email: 'w@example.com' })).body
+    const a = (await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })).body
+    const w = (await api().post(url(s.id)).send({ name: 'W', email: 'w@example.com' })).body
     expect(w.status).toBe('waitlisted')
 
     // Fail exactly at the promotion step (waitlisted -> confirmed), after the cancel happened.
@@ -45,7 +44,7 @@ describe('Cancellation and promotion are atomic (LATC-5)', () => {
         (args as { data: { status?: string } }).data.status === 'confirmed'
     )
 
-    const res = await request(app).delete(`${url(s.id)}/${a.id}`)
+    const res = await api().delete(`${url(s.id)}/${a.id}`)
 
     expect(res.status).toBe(500)
     // No partial state: A is still confirmed, W still waitlisted, seat count unchanged.
@@ -58,10 +57,10 @@ describe('Cancellation and promotion are atomic (LATC-5)', () => {
 
   it('the same cancellation succeeds once the failure is gone', async () => {
     const s = await session(1)
-    const a = (await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })).body
-    const w = (await request(app).post(url(s.id)).send({ name: 'W', email: 'w@example.com' })).body
+    const a = (await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })).body
+    const w = (await api().post(url(s.id)).send({ name: 'W', email: 'w@example.com' })).body
 
-    const res = await request(app).delete(`${url(s.id)}/${a.id}`)
+    const res = await api().delete(`${url(s.id)}/${a.id}`)
 
     expect(res.status).toBe(200)
     expect(res.body.promotedRegistrationId).toBe(w.id)
