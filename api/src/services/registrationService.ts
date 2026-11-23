@@ -40,6 +40,26 @@ export type RegisterResult =
       session: SessionCounts
     }
 
+export type CancelResult =
+  | { kind: 'not_found' }
+  | { kind: 'already_cancelled' }
+  | {
+      kind: 'cancelled'
+      registration: RegistrationDetails
+      session: SessionCounts
+    }
+
+export interface RegistrationStatusView {
+  id: number
+  sessionId: number
+  status: RegistrationStatus
+  position: number | null
+}
+
+export type RegistrationLookupResult =
+  | { kind: 'not_found' }
+  | { kind: 'found'; view: RegistrationStatusView }
+
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
 
 interface RegistrationRow {
@@ -84,7 +104,7 @@ function details(row: RegistrationRow): RegistrationDetails {
 
 // Position is derived (never stored): 1-based rank by id among the session's waitlisted rows.
 async function waitlistPosition(
-  tx: Tx,
+  tx: Tx | typeof prisma,
   sessionId: number,
   registrationId: number
 ): Promise<number> {
@@ -152,4 +172,70 @@ export async function registerForSession(
     },
     { maxWait: 5000, timeout: 10000 }
   )
+}
+
+// Release one confirmed seat, never below 0. LATC-89 extends this: hand the seat to the head
+// of the waitlist instead when someone is waiting.
+async function releaseSeat(tx: Tx, sessionId: number): Promise<void> {
+  await tx.trainingSession.updateMany({
+    where: { id: sessionId, registered: { gt: 0 } },
+    data: { registered: { decrement: 1 } },
+  })
+}
+
+export async function cancelRegistration(
+  sessionId: number,
+  registrationId: number
+): Promise<CancelResult> {
+  return prisma.$transaction(
+    async (tx) => {
+      const reg = await tx.registration.findFirst({ where: { id: registrationId, sessionId } })
+      if (!reg) {
+        return { kind: 'not_found' }
+      }
+      if (reg.status === REGISTRATION_STATUS.cancelled) {
+        return { kind: 'already_cancelled' }
+      }
+
+      const done = await tx.registration.updateMany({
+        where: { id: reg.id, status: reg.status },
+        data: { status: REGISTRATION_STATUS.cancelled },
+      })
+      if (done.count === 0) {
+        return { kind: 'already_cancelled' }
+      }
+
+      if (reg.status === REGISTRATION_STATUS.confirmed) {
+        await releaseSeat(tx, sessionId)
+      }
+
+      return {
+        kind: 'cancelled',
+        registration: details({ ...reg, status: REGISTRATION_STATUS.cancelled }),
+        session: await sessionCounts(tx, sessionId),
+      }
+    },
+    { maxWait: 5000, timeout: 10000 }
+  )
+}
+
+export async function getRegistrationStatus(
+  sessionId: number,
+  registrationId: number
+): Promise<RegistrationLookupResult> {
+  const reg = await prisma.registration.findFirst({
+    where: { id: registrationId, sessionId },
+    select: { id: true, sessionId: true, status: true },
+  })
+  if (!reg) {
+    return { kind: 'not_found' }
+  }
+
+  const status = reg.status as RegistrationStatus
+  const position =
+    status === REGISTRATION_STATUS.waitlisted
+      ? await waitlistPosition(prisma, sessionId, reg.id)
+      : null
+
+  return { kind: 'found', view: { id: reg.id, sessionId: reg.sessionId, status, position } }
 }

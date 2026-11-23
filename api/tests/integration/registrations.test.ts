@@ -212,3 +212,138 @@ describe('POST /api/training-sessions/:id/registrations', () => {
     expect(await prisma.registration.count({ where: { sessionId, status: 'waitlisted' } })).toBe(4)
   })
 })
+
+describe('cancel', () => {
+  async function seed(capacity: number, confirmed: number, waitlisted: number) {
+    const sessionId = await createSession(capacity, confirmed)
+    const confirmedIds: number[] = []
+    const waitlistedIds: number[] = []
+    for (let i = 0; i < confirmed; i++) {
+      const r = await prisma.registration.create({
+        data: { sessionId, name: `C${i}`, email: `c${i}@example.com`, status: 'confirmed' },
+      })
+      confirmedIds.push(r.id)
+    }
+    for (let i = 0; i < waitlisted; i++) {
+      const r = await prisma.registration.create({
+        data: { sessionId, name: `W${i}`, email: `w${i}@example.com`, status: 'waitlisted' },
+      })
+      waitlistedIds.push(r.id)
+    }
+    return { sessionId, confirmedIds, waitlistedIds }
+  }
+
+  async function assertCounterConsistent(sessionId: number) {
+    const session = await prisma.trainingSession.findUniqueOrThrow({ where: { id: sessionId } })
+    const confirmed = await prisma.registration.count({ where: { sessionId, status: 'confirmed' } })
+    expect(session.registered).toBe(confirmed)
+  }
+
+  const cancel = (sessionId: number | string, regId: number | string) =>
+    request(server).delete(`/api/training-sessions/${sessionId}/registrations/${regId}`)
+  const lookup = (sessionId: number | string, regId: number | string) =>
+    request(server).get(`/api/training-sessions/${sessionId}/registrations/${regId}`)
+
+  it('cancels a confirmed registration and releases one seat', async () => {
+    const { sessionId, confirmedIds } = await seed(2, 2, 0)
+
+    const res = await cancel(sessionId, confirmedIds[0])
+
+    expect(res.status).toBe(200)
+    expect(res.body.status).toBe('cancelled')
+    expect(res.body.session.registered).toBe(1)
+    const row = await prisma.registration.findUniqueOrThrow({ where: { id: confirmedIds[0] } })
+    expect(row.status).toBe('cancelled')
+    await assertCounterConsistent(sessionId)
+  })
+
+  it('does not promote anyone (that is LATC-89)', async () => {
+    const { sessionId, confirmedIds, waitlistedIds } = await seed(1, 1, 1)
+
+    const res = await cancel(sessionId, confirmedIds[0])
+
+    expect(res.body.session.registered).toBe(0)
+    const waiting = await prisma.registration.findUniqueOrThrow({ where: { id: waitlistedIds[0] } })
+    expect(waiting.status).toBe('waitlisted')
+    await assertCounterConsistent(sessionId)
+  })
+
+  it('lets a waitlisted employee leave without changing registered', async () => {
+    const { sessionId, waitlistedIds } = await seed(1, 1, 2)
+
+    const res = await cancel(sessionId, waitlistedIds[0])
+
+    expect(res.status).toBe(200)
+    expect(res.body.session.registered).toBe(1)
+    expect((await lookup(sessionId, waitlistedIds[1])).body.position).toBe(1)
+    await assertCounterConsistent(sessionId)
+  })
+
+  it('returns 409 for an already cancelled registration and changes nothing', async () => {
+    const { sessionId, confirmedIds } = await seed(2, 2, 0)
+    await cancel(sessionId, confirmedIds[0])
+
+    const res = await cancel(sessionId, confirmedIds[0])
+
+    expect(res.status).toBe(409)
+    expect(res.body.error).toBe('Registration is already cancelled')
+    const session = await prisma.trainingSession.findUniqueOrThrow({ where: { id: sessionId } })
+    expect(session.registered).toBe(1)
+  })
+
+  it('returns 404 for an unknown registration or one from another session', async () => {
+    const a = await seed(1, 1, 0)
+    const b = await seed(1, 1, 0)
+
+    expect((await cancel(a.sessionId, 999999)).status).toBe(404)
+    const mismatch = await cancel(a.sessionId, b.confirmedIds[0])
+    expect(mismatch.status).toBe(404)
+    expect(mismatch.body.error).toBe('Registration not found')
+    const row = await prisma.registration.findUniqueOrThrow({ where: { id: b.confirmedIds[0] } })
+    expect(row.status).toBe('confirmed')
+  })
+
+  it('returns 400 for invalid ids', async () => {
+    expect((await cancel('abc', 1)).body.error).toBe('Invalid session ID')
+    expect((await cancel(1, 'abc')).body.error).toBe('Invalid registration ID')
+  })
+
+  it('cancels exactly once under a concurrent double cancel', async () => {
+    const { sessionId, confirmedIds } = await seed(2, 2, 0)
+
+    const responses = await Promise.all([
+      cancel(sessionId, confirmedIds[0]),
+      cancel(sessionId, confirmedIds[0]),
+    ])
+
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 409])
+    const session = await prisma.trainingSession.findUniqueOrThrow({ where: { id: sessionId } })
+    expect(session.registered).toBe(1)
+    await assertCounterConsistent(sessionId)
+  })
+
+  it('GET returns status and position without personal data', async () => {
+    const { sessionId, confirmedIds, waitlistedIds } = await seed(1, 1, 1)
+
+    expect((await lookup(sessionId, waitlistedIds[0])).body).toEqual({
+      id: waitlistedIds[0],
+      sessionId,
+      status: 'waitlisted',
+      position: 1,
+    })
+    await cancel(sessionId, confirmedIds[0])
+    const cancelled = await lookup(sessionId, confirmedIds[0])
+    expect(cancelled.body).toMatchObject({ status: 'cancelled', position: null })
+    expect(cancelled.body).not.toHaveProperty('name')
+    expect(cancelled.body).not.toHaveProperty('email')
+  })
+
+  it('GET returns 404 for unknown or mismatched and 400 for invalid ids', async () => {
+    const a = await seed(1, 1, 0)
+    const b = await seed(1, 1, 0)
+
+    expect((await lookup(a.sessionId, 999999)).status).toBe(404)
+    expect((await lookup(a.sessionId, b.confirmedIds[0])).status).toBe(404)
+    expect((await lookup('abc', 1)).status).toBe(400)
+  })
+})

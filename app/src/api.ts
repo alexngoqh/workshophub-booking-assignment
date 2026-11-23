@@ -1,4 +1,9 @@
-import type { RegistrationInput, RegistrationResponse } from './types'
+import type {
+  CancelResponse,
+  RegistrationInput,
+  RegistrationResponse,
+  RegistrationStatusView,
+} from './types'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
 
@@ -9,19 +14,12 @@ interface ErrorBody {
   details?: string[]
 }
 
-export async function registerForSession(
-  sessionId: number,
-  input: RegistrationInput
-): Promise<ApiResult<RegistrationResponse>> {
+async function request<T>(url: string, init: RequestInit, fallback: string): Promise<ApiResult<T>> {
   try {
-    const res = await fetch(`${API_BASE}/api/training-sessions/${sessionId}/registrations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    })
+    const res = await fetch(url, init)
 
     if (res.ok) {
-      const data = (await res.json()) as RegistrationResponse
+      const data = (await res.json()) as T
       return { ok: true, data }
     }
 
@@ -29,9 +27,49 @@ export async function registerForSession(
     return {
       ok: false,
       status: res.status,
-      error: body.details?.join(', ') || body.error || 'Registration failed',
+      error: body.details?.join(', ') || body.error || fallback,
     }
   } catch {
     return { ok: false, status: 0, error: 'Network error' }
   }
+}
+
+const registrationsUrl = (sessionId: number) =>
+  `${API_BASE}/api/training-sessions/${sessionId}/registrations`
+
+export function registerForSession(
+  sessionId: number,
+  input: RegistrationInput
+): Promise<ApiResult<RegistrationResponse>> {
+  return request(
+    registrationsUrl(sessionId),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    },
+    'Registration failed'
+  )
+}
+
+export function cancelRegistration(
+  sessionId: number,
+  registrationId: number
+): Promise<ApiResult<CancelResponse>> {
+  return request(
+    `${registrationsUrl(sessionId)}/${registrationId}`,
+    { method: 'DELETE' },
+    'Cancellation failed'
+  )
+}
+
+export function getRegistration(
+  sessionId: number,
+  registrationId: number
+): Promise<ApiResult<RegistrationStatusView>> {
+  return request(
+    `${registrationsUrl(sessionId)}/${registrationId}`,
+    { method: 'GET' },
+    'Could not load registration'
+  )
 }
