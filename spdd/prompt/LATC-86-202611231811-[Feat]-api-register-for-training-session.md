@@ -52,7 +52,6 @@ class RegistrationInput {
 
 class RegisterResult {
     <<union>>
-    +kind "invalid_session_id"
     +kind "session_not_found"
     +kind "session_full"
     +kind "registered"
@@ -83,7 +82,7 @@ RegisterResult --> RegistrationResponse : registered carries
 
 - `TrainingSession` is **unchanged** apart from the new back-relation. `registered` stays a stored counter.
 - `Registration` is new and has no `status` field. LATC-3 adds the status lifecycle. Don't add it early.
-- `RegisterResult` is a TypeScript discriminated union. The service returns outcomes instead of throwing for expected business cases.
+- `RegisterResult` is a TypeScript discriminated union. The service returns outcomes instead of throwing for expected business cases. An invalid session id never reaches the service: the route rejects it (Operations 5.3).
 
 ## Approach
 
@@ -254,7 +253,7 @@ Implement test-first, as AGENT.md requires: write each test, watch it fail, then
    - Never send stack traces or Prisma messages to clients.
 4. **Validation**: pure, reusable functions that return message arrays. Normalise (trim and lower-case the email) in the service before persisting.
 5. **Logging**: `console.error` only, for unexpected failures, with a context prefix. Don't log personal data (name or email) on success paths.
-6. **Testing**: Integration tests start the app once per file with `app.listen(0, '127.0.0.1')` and send requests to that server, not `request(app)`. Supertest's default listens on `::` but connects to `127.0.0.1`, so another local process can answer (found in LATC-71). TDD. Integration tests use Supertest against `app`, and unit tests mock `lib/prisma` like `trainingSessionService.test.ts`. Tests own their data and clean it up.
+6. **Testing**: Integration tests start the app once per file with `app.listen(0, '127.0.0.1')` and send requests to that server, not `request(app)`. Supertest's default listens on `::` but connects to `127.0.0.1`, so another local process can answer (found in LATC-71). TDD. Unit tests mock `lib/prisma` like `trainingSessionService.test.ts`. Tests own their data and clean it up.
 7. **Style**: Prettier (no semicolons, single quotes), with the `pre-push`/`format-check` hooks. Commit messages are prefixed `[LATC-86]`. React uses function components and hooks, with no new dependencies.
 8. **Documentation**: a short comment only where the reason isn't obvious (for example, why the seat claim is a conditional update).
 
