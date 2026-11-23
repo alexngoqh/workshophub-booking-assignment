@@ -46,6 +46,7 @@ export type CancelResult =
   | {
       kind: 'cancelled'
       registration: RegistrationDetails
+      promoted: RegistrationDetails | null
       session: SessionCounts
     }
 
@@ -174,13 +175,36 @@ export async function registerForSession(
   )
 }
 
-// Release one confirmed seat, never below 0. LATC-89 extends this: hand the seat to the head
-// of the waitlist instead when someone is waiting.
+// Release one confirmed seat, never below 0. Used when nobody is promoted into it (LATC-89).
 async function releaseSeat(tx: Tx, sessionId: number): Promise<void> {
   await tx.trainingSession.updateMany({
     where: { id: sessionId, registered: { gt: 0 } },
     data: { registered: { decrement: 1 } },
   })
+}
+
+// Promote the head of the session's waitlist. Ordered by id to match the position shown by
+// LATC-87. The status-conditional update means a concurrent promoter can't win the same row;
+// on a lost race, retry once with the next head.
+async function promoteNext(tx: Tx, sessionId: number): Promise<RegistrationDetails | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const head = await tx.registration.findFirst({
+      where: { sessionId, status: REGISTRATION_STATUS.waitlisted },
+      orderBy: { id: 'asc' },
+    })
+    if (!head) {
+      return null
+    }
+
+    const won = await tx.registration.updateMany({
+      where: { id: head.id, status: REGISTRATION_STATUS.waitlisted },
+      data: { status: REGISTRATION_STATUS.confirmed },
+    })
+    if (won.count === 1) {
+      return details({ ...head, status: REGISTRATION_STATUS.confirmed })
+    }
+  }
+  return null
 }
 
 export async function cancelRegistration(
@@ -205,13 +229,28 @@ export async function cancelRegistration(
         return { kind: 'already_cancelled' }
       }
 
+      let promoted: RegistrationDetails | null = null
+
       if (reg.status === REGISTRATION_STATUS.confirmed) {
-        await releaseSeat(tx, sessionId)
+        const session = await tx.trainingSession.findUniqueOrThrow({ where: { id: sessionId } })
+        // Only hand the seat on if the session is not over capacity (e.g. after an admin
+        // lowered capacity).
+        if (session.registered - 1 < session.capacity) {
+          promoted = await promoteNext(tx, sessionId)
+        }
+        // With a promotion the freed seat is refilled, so registered is not written at all
+        // (net zero). Without one, release the seat.
+        if (promoted === null) {
+          await releaseSeat(tx, sessionId)
+        }
       }
+
+      // LATC-8: notify promoted employee here (out of scope for LATC-89)
 
       return {
         kind: 'cancelled',
         registration: details({ ...reg, status: REGISTRATION_STATUS.cancelled }),
+        promoted,
         session: await sessionCounts(tx, sessionId),
       }
     },

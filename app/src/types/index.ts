@@ -38,6 +38,7 @@ export type RegistrationStatus = 'confirmed' | 'waitlisted' | 'cancelled'
 
 export interface CancelResponse {
   status: 'cancelled'
+  promotedRegistrationId: number | null
   session: RegistrationResponse['session']
 }
 

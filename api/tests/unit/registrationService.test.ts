@@ -109,8 +109,21 @@ describe('cancelRegistration', () => {
     expect(tx.trainingSession.updateMany).not.toHaveBeenCalled()
   })
 
-  it('releases one seat (never below 0) when cancelling a confirmed registration', async () => {
-    tx.registration.findFirst.mockResolvedValue(row('confirmed'))
+  it('promotes the waitlist head and leaves registered unchanged', async () => {
+    tx.registration.findFirst
+      .mockResolvedValueOnce(row('confirmed'))
+      .mockResolvedValueOnce({ ...row('waitlisted'), id: 2 })
+    tx.registration.updateMany.mockResolvedValue({ count: 1 })
+
+    const result = await cancelRegistration(10, 1)
+
+    expect(result.kind === 'cancelled' && result.promoted?.id).toBe(2)
+    expect(tx.registration.updateMany).toHaveBeenCalledTimes(2)
+    expect(tx.trainingSession.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('releases one seat (never below 0) when nobody is waiting', async () => {
+    tx.registration.findFirst.mockResolvedValueOnce(row('confirmed')).mockResolvedValueOnce(null)
     tx.registration.updateMany.mockResolvedValue({ count: 1 })
 
     expect((await cancelRegistration(10, 1)).kind).toBe('cancelled')

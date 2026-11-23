@@ -111,6 +111,7 @@ function TrainingSessionCard({ session }: Props) {
     setCancelling(false)
 
     if (result.ok) {
+      // promotedRegistrationId is deliberately not shown: promotion is invisible to the canceller.
       setRegistered(result.data.session.registered)
       setWaitlisted(result.data.session.waitlisted)
       setMyStatus('cancelled')
