@@ -157,7 +157,7 @@ Test-first.
    - A confirmed cancel with ≥1 waitlisted promotes exactly the lowest-id waitlisted registration in that session, and `registered` is unchanged.
    - With an empty waitlist it decrements by 1.
    - A waitlisted cancel promotes nobody.
-2. **Performance constraints**: at most 9 queries per cancel transaction. Head selection uses the `[sessionId, status]` index.
+2. **Performance constraints**: at most 8 queries per cancel transaction normally, and 10 in the worst case, when `promoteNext` loses a race and retries (an extra head lookup and promote). Head selection uses the `[sessionId, status]` index.
 3. **Security constraints**: no raw SQL. The promoted registration's PII is never returned; only the id is.
 4. **Integration constraints**: LATC-86/87/88 contracts are unchanged except for the additive `promotedRegistrationId`. Every LATC-88 error message is unchanged.
 5. **Business rule constraints**:
