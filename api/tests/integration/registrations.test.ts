@@ -405,3 +405,57 @@ describe('cancel', () => {
     expect((await lookup('abc', 1)).status).toBe(400)
   })
 })
+
+describe('organiser list', () => {
+  const list = (sessionId: number | string) =>
+    request(server).get(`/api/training-sessions/${sessionId}/registrations`)
+
+  async function add(sessionId: number, status: string, n: number) {
+    const r = await prisma.registration.create({
+      data: { sessionId, name: `${status}${n}`, email: `${status}${n}@example.com`, status },
+    })
+    return r.id
+  }
+
+  it('returns confirmed and waitlisted in queue order, excluding cancelled', async () => {
+    const sessionId = await createSession(2, 2)
+    const c1 = await add(sessionId, 'confirmed', 1)
+    const w1 = await add(sessionId, 'waitlisted', 1)
+    const x1 = await add(sessionId, 'cancelled', 1)
+    const c2 = await add(sessionId, 'confirmed', 2)
+    const w2 = await add(sessionId, 'waitlisted', 2)
+
+    const res = await list(sessionId)
+
+    expect(res.status).toBe(200)
+    expect(res.body.confirmed.map((r: { id: number }) => r.id)).toEqual([c1, c2])
+    expect(res.body.waitlisted.map((r: { id: number }) => r.id)).toEqual([w1, w2])
+    const all = [...res.body.confirmed, ...res.body.waitlisted]
+    expect(all.map((r: { id: number }) => r.id)).not.toContain(x1)
+    for (const item of all) {
+      expect(Object.keys(item).sort()).toEqual(['createdAt', 'email', 'id', 'name', 'status'])
+    }
+  })
+
+  it('returns two empty arrays for a session without registrations', async () => {
+    const sessionId = await createSession(2)
+
+    expect((await list(sessionId)).body).toEqual({ confirmed: [], waitlisted: [] })
+  })
+
+  it('returns empty arrays when every registration is cancelled', async () => {
+    const sessionId = await createSession(2)
+    await add(sessionId, 'cancelled', 1)
+
+    expect((await list(sessionId)).body).toEqual({ confirmed: [], waitlisted: [] })
+  })
+
+  it('returns 404 for an unknown session and 400 for an invalid id', async () => {
+    const unknown = await list(999999)
+    expect(unknown.status).toBe(404)
+    expect(unknown.body.error).toBe('Training session not found')
+    const invalid = await list('abc')
+    expect(invalid.status).toBe(400)
+    expect(invalid.body.error).toBe('Invalid session ID')
+  })
+})

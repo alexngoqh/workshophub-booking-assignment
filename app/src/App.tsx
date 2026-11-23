@@ -1,7 +1,12 @@
 import TrainingSessionsPage from './pages/TrainingSessionsPage'
+import SessionDetailPage from './pages/SessionDetailPage'
+import { usePath } from './router'
 import './App.css'
 
 function App() {
+  const path = usePath()
+  const detail = /^\/sessions\/(\d+)$/.exec(path)
+
   return (
     <div className="app">
       <header className="app-header">
@@ -9,7 +14,7 @@ function App() {
         <p className="app-tagline">Internal Training Registration System</p>
       </header>
       <main className="app-main">
-        <TrainingSessionsPage />
+        {detail ? <SessionDetailPage id={Number(detail[1])} /> : <TrainingSessionsPage />}
       </main>
     </div>
   )

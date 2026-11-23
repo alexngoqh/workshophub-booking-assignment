@@ -1,6 +1,7 @@
 import {
   REGISTRATION_STATUS,
   cancelRegistration,
+  listRegistrations,
   validateRegistrationInput,
 } from '../../src/services/registrationService'
 
@@ -9,10 +10,15 @@ const tx = {
   trainingSession: { findUniqueOrThrow: jest.fn(), updateMany: jest.fn() },
 }
 
+const mockFindSession = jest.fn()
+const mockFindMany = jest.fn()
+
 jest.mock('../../src/lib/prisma', () => ({
   __esModule: true,
   default: {
     $transaction: jest.fn((fn: (t: unknown) => unknown) => fn(tx)),
+    trainingSession: { findUnique: (...a: unknown[]) => mockFindSession(...a) },
+    registration: { findMany: (...a: unknown[]) => mockFindMany(...a) },
   },
 }))
 
@@ -131,5 +137,32 @@ describe('cancelRegistration', () => {
       where: { id: 10, registered: { gt: 0 } },
       data: { registered: { decrement: 1 } },
     })
+  })
+})
+
+describe('listRegistrations', () => {
+  it('returns session_not_found without querying registrations', async () => {
+    mockFindSession.mockResolvedValue(null)
+
+    expect(await listRegistrations(1)).toEqual({ kind: 'session_not_found' })
+    expect(mockFindMany).not.toHaveBeenCalled()
+  })
+
+  it('groups rows into confirmed and waitlisted', async () => {
+    const at = new Date('2026-01-01T00:00:00Z')
+    mockFindSession.mockResolvedValue({ id: 1 })
+    mockFindMany.mockResolvedValue([
+      { id: 1, name: 'A', email: 'a@x.co', status: 'confirmed', createdAt: at },
+      { id: 2, name: 'B', email: 'b@x.co', status: 'waitlisted', createdAt: at },
+      { id: 3, name: 'C', email: 'c@x.co', status: 'confirmed', createdAt: at },
+    ])
+
+    const result = await listRegistrations(1)
+
+    expect(result.kind).toBe('found')
+    if (result.kind === 'found') {
+      expect(result.roster.confirmed.map((r) => r.id)).toEqual([1, 3])
+      expect(result.roster.waitlisted.map((r) => r.id)).toEqual([2])
+    }
   })
 })
