@@ -163,3 +163,19 @@
   color: #b91c1c;
   font-size: 0.85rem;
 }
+
+.session-card__button--waitlist {
+  background: #b45309;
+}
+
+.session-card__waitlist-count {
+  color: #b45309;
+  font-weight: 500;
+}
+
+.session-card__my-status {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #b45309;
+}

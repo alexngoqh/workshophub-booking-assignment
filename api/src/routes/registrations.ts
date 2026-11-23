@@ -32,11 +32,13 @@ router.post('/', async (req: Request<{ id: string }>, res: Response) => {
       case 'session_not_found':
         res.status(404).json({ error: 'Training session not found' })
         return
-      case 'session_full':
-        res.status(409).json({ error: 'This session is full' })
-        return
-      case 'registered':
+      case 'confirmed':
         res.status(201).json({ ...result.registration, session: result.session })
+        return
+      case 'waitlisted':
+        res
+          .status(202)
+          .json({ ...result.registration, position: result.position, session: result.session })
         return
     }
   } catch (error) {
