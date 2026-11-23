@@ -1,7 +1,7 @@
 import request from 'supertest'
 import app from '../../src/app'
 
-describe('GET /api/training-sessions', () => {
+describe('GET /api/training-sessions (LATC-1)', () => {
   it('returns 200 with an array of sessions', async () => {
     const response = await request(app).get('/api/training-sessions')
     expect(response.status).toBe(200)
@@ -26,7 +26,7 @@ describe('GET /api/training-sessions', () => {
   })
 })
 
-describe('GET /api/training-sessions/:id', () => {
+describe('GET /api/training-sessions/:id (LATC-1)', () => {
   it('returns 200 with a session when id exists', async () => {
     const allResponse = await request(app).get('/api/training-sessions')
     expect(allResponse.status).toBe(200)

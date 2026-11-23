@@ -12,12 +12,13 @@ norms, and the boundaries within which an agent is allowed to act.
 browse internal training sessions and register for them. This repository is the
 baseline codebase template for the 3-day AI-assisted software delivery training.
 
-**Monorepo.** A pnpm 9 workspace with two packages:
+**Monorepo.** A pnpm 9 workspace with three packages:
 
-| Package            | Path   | Stack                                         |
-| ------------------ | ------ | --------------------------------------------- |
-| `@workshophub/app` | `app/` | React 18 + TypeScript + Vite 5 (frontend)     |
-| `@workshophub/api` | `api/` | Node 24 + TypeScript + Express + Prisma (API) |
+| Package              | Path   | Stack                                             |
+| -------------------- | ------ | ------------------------------------------------- |
+| `@workshophub/app`   | `app/` | React 18 + TypeScript + Vite 5 (frontend)         |
+| `@workshophub/api`   | `api/` | Node 24 + TypeScript + Express + Prisma (API)     |
+| `@workshophub/e2e`   | `e2e/` | Playwright (end-to-end tests)                     |
 
 **Tech stack.** SQLite via Prisma ORM; Jest + Supertest for API tests;
 ESLint + Prettier; Husky pre-push hooks; GitHub Actions CI; Docker / Docker
@@ -51,17 +52,17 @@ Makefile              Stable command interface
 
 Use the Makefile. `make help` lists everything.
 
-| Command                       | Purpose                                          |
-| ----------------------------- | ------------------------------------------------ |
-| `make setup`                  | Install deps, generate client, push schema, seed |
-| `make dev`                    | Run frontend + backend together                  |
-| `make test`                   | Run unit + integration tests                     |
-| `make test-unit`              | Unit tests only (no database required)           |
-| `make lint`                   | ESLint across all packages                       |
-| `make format-check`           | Prettier check across all packages               |
-| `make build`                  | Build frontend + backend                         |
-| `make seed` / `make reset-db` | Seed / force-reset and re-seed the DB            |
-| `make smoke-test`             | Validate a running app (default port 3001)       |
+| Command                 | Purpose                                        |
+| ----------------------- | ---------------------------------------------- |
+| `make setup`            | Install deps, generate client, push schema, seed |
+| `make dev`              | Run frontend + backend together                |
+| `make test`             | Run unit + integration tests                   |
+| `make test-unit`        | Unit tests only (no database required)         |
+| `make lint`             | ESLint across all packages                     |
+| `make format-check`     | Prettier check across all packages             |
+| `make build`            | Build frontend + backend                       |
+| `make seed` / `make reset-db` | Seed / force-reset and re-seed the DB    |
+| `make smoke-test`       | Validate a running app (default port 3001)      |
 
 ---
 
@@ -90,8 +91,8 @@ routes   →   services   →   lib/prisma
 ```
 
 Routes only parse and validate input, then delegate to a service; services own
-all database access and business rules. `training-sessions.ts` →
-`trainingSessionService.ts` is the reference pattern (a route imports only from
+all database access and business rules. `registrations.ts` →
+`registrationService.ts` is the reference pattern (a route imports only from
 `../services`, never from `../lib/prisma`).
 
 > Note: the `GET /search` route in `training-sessions.ts` currently calls Prisma
@@ -141,8 +142,8 @@ What an agent may do on its own, what needs a human "yes" first, and what it mus
 ### May do autonomously
 
 - Read anything in the repo except `docs/trainer-only/`.
-- Edit `api/`, `app/`, `spdd/`, `stories/` and tests, as long as the edit is within the scope of the current LATC story.
-- Run read-only and local checks: `make test`, `make test-unit`, `make lint`, `make format-check`, `make reasons-lint`, `make branch-name-check`, `make build`, `make dev`.
+- Edit `api/`, `app/`, `e2e/`, `openspec/`, `spdd/`, `stories/` and tests, as long as the edit is within the scope of the current LATC story.
+- Run read-only and local checks: `make test`, `make test-unit`, `make lint`, `make format-check`, `make reasons-lint`, `make branch-name-check`, `make build`, `make dev`, and the E2E suite in `e2e/`.
 - Create a `latc-<N>-<slug>` branch and make local commits through the hooks (`/kickoff`, the `commit` skill).
 - Read Jira (`jira` MCP).
 

@@ -8,7 +8,8 @@
     "test": "pnpm --filter @workshophub/api test",
     "lint": "pnpm --filter @workshophub/app lint && pnpm --filter @workshophub/api lint",
     "format-check": "pnpm --filter @workshophub/app format-check && pnpm --filter @workshophub/api format-check",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:e2e": "pnpm --filter @workshophub/e2e test"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

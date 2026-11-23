@@ -9,7 +9,7 @@
 #   - Operations contains at least one numbered "### N." step
 #
 # Usage: scripts/reasons-lint.sh [file ...]
-# Exit:  0 = all files pass, 1 = at least one violation, 2 = no files found
+# Exit:  0 = all files pass (or no prompt files exist yet), 1 = at least one violation
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -24,8 +24,8 @@ else
 fi
 
 if [ "${#FILES[@]}" -eq 0 ]; then
-  echo "reasons-lint: no SPDD prompt files found in spdd/prompt/" >&2
-  exit 2
+  echo "reasons-lint: no SPDD prompt files in spdd/prompt/, nothing to check"
+  exit 0
 fi
 
 failures=0

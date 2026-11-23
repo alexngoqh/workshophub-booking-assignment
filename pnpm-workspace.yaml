@@ -1,6 +1,7 @@
 packages:
   - 'app'
   - 'api'
+  - 'e2e'
 
 allowBuilds:
   '@prisma/client': true

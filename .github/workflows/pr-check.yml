@@ -34,17 +34,17 @@ jobs:
       - name: Push database schema (test DB)
         run: cd api && pnpm exec prisma db push
         env:
-          DATABASE_URL: file:../database/workshophub-ci.sqlite
+          DATABASE_URL: file:../database/workshophub-ci.sqlite?connection_limit=1
 
       - name: Seed database
         run: cd api && pnpm exec prisma db seed
         env:
-          DATABASE_URL: file:../database/workshophub-ci.sqlite
+          DATABASE_URL: file:../database/workshophub-ci.sqlite?connection_limit=1
 
       - name: Run tests
         run: pnpm run test
         env:
-          DATABASE_URL: file:../database/workshophub-ci.sqlite
+          DATABASE_URL: file:../database/workshophub-ci.sqlite?connection_limit=1
           # Note: DATABASE_URL is relative to api/prisma/schema.prisma
           # file:../database/X resolves to api/database/X
 

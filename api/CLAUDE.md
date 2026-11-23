@@ -5,40 +5,50 @@ Scoped guidance for the Express + Prisma API. The root [CLAUDE.md](../CLAUDE.md)
 ## Layout
 
 ```
-src/app.ts            Express app: middleware, router mounting, error handler
-src/server.ts         listens on :3001
-src/routes/*.ts       HTTP only: parse + validate input, call a service, map result → status
-src/services/*.ts     business rules + ALL Prisma access
-src/lib/prisma.ts     the single shared PrismaClient
-prisma/schema.prisma  SQLite schema (applied with `prisma db push`, no migrations)
-prisma/seed.ts        seed data
-tests/unit/           service tests, no DB (mock lib/prisma)
-tests/integration/    supertest against app.ts, real dev DB
+src/app.ts                     Express app: middleware, router mounting, error handler
+src/server.ts                  listens on :3001
+src/routes/*.ts                HTTP only: parse + validate input, call a service, map result → status
+src/services/registrationService.ts   register / cancel+promote / lookup / list / audit history
+src/services/trainingSessionService.ts
+src/notifications/index.ts     fire-and-forget notifications (after commit, never awaited)
+src/lib/prisma.ts              the single shared PrismaClient
+prisma/schema.prisma           TrainingSession, Registration, AuditLog (db push, no migrations)
+tests/unit/                    no DB; mock lib/prisma
+tests/integration/             supertest against app.ts on a dedicated test DB
+tests/integration/helpers.ts   createTestSession / deleteTestSessions
+tests/integration/faultInjection.ts   forces mid-transaction failures for atomicity tests
 ```
 
-Reference pair to copy: `routes/training-sessions.ts` → `services/trainingSessionService.ts`.
+Reference pair to copy: `routes/registrations.ts` → `services/registrationService.ts`.
 
 ## Rules for this package
 
-- **Routes never import `../lib/prisma`.** Add a service function instead. Known planted violations are `routes/admin.ts` (its own `PrismaClient`) and `GET /search` in `routes/training-sessions.ts`. Don't copy them, and don't "fix" them unless a story asks.
-- **No `any`.** Type Prisma rows with the generated types and request bodies with an interface plus validation.
-- **Domain errors → status codes in the route, not the service.** Services throw or return typed results (e.g. `NotFound`, `Full`). Routes map them to 400 / 404 / 409.
-- **Counters and capacity checks must be atomic.** Use `prisma.$transaction` when you read `registered` and then write it (race condition called out in LATC-2).
-- **New router?** Mount it in `src/app.ts` under `/api/...`.
-- Schema changes: edit `schema.prisma`, then run `pnpm exec prisma db push && pnpm exec prisma generate`. Never add migration files.
+- **Routes never import `../lib/prisma`.** Add a service function instead. The planted violations are `routes/admin.ts` (its own `PrismaClient`) and `GET /search` in `routes/training-sessions.ts` (raw SQL). Don't copy them, and don't fix them unless a story asks.
+- **Every status change happens in one transaction together with:**
+  - the `registered` counter update (it counts **confirmed** seats only), and
+  - an `AuditLog` row (`fromStatus → toStatus`).
+
+  If one of the three is missing, the atomicity tests should fail. Keep them that way.
+
+- **Notifications are sent after the commit and never awaited.** A notification failure must never change the HTTP response.
+- **Statuses:** only `confirmed | waitlisted | cancelled`. Promotion takes the oldest `waitlisted` registration by `createdAt`.
+- **Deadline:** registering after `registrationDeadline` (server time, UTC) returns 422.
+- **No `any`.** Use Prisma's generated types, and `unknown` plus narrowing for request bodies.
+- Schema changes: edit `schema.prisma`, then `pnpm exec prisma db push && pnpm exec prisma generate`. Never add migration files.
 
 ## Tests
 
 ```bash
 pnpm exec jest tests/unit                       # fast, no DB
-pnpm exec jest tests/integration/<file>.test.ts # one integration file
+pnpm exec jest tests/integration/<file>.test.ts # one file
 pnpm exec jest -t "<test name>"                 # one test
 ```
 
-- Integration tests share `database/workshophub.sqlite` with `make dev`. **Clean up every row you create** (`afterEach`/`afterAll`). If the data drifts, run `make reset-db`.
-- `--runInBand` is required. Don't parallelise integration tests.
-- Test first (red → green), following the SPDD prompt's Operations order.
+- `tests/globalSetup.ts` force-resets and seeds a **dedicated** test DB (`database/workshophub-test.sqlite?connection_limit=1`) once per run. It is not the dev DB. Set `DATABASE_URL` to override it.
+- `--runInBand` is set in `package.json`. Don't parallelise.
+- Create data with `createTestSession` and clean it up with `deleteTestSessions`. Never change seed rows.
+- New state transitions need an atomicity test using `faultInjection.ts`.
 
 ## Done for an API change
 
-`make test && make lint && make format-check` all pass, and the endpoint's status codes match the story's acceptance criteria exactly.
+`make test && make lint && make format-check` all pass, and status codes and bodies match the story's acceptance criteria and the matching spec in `openspec/specs/`.

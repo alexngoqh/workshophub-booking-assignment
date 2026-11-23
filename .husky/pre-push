@@ -25,11 +25,7 @@ done
 [ "$checked" -eq 1 ] || bash scripts/branch-name-check.sh || fail "branch-name-check"
 
 echo "▶ pre-push: REASONS structure"
-if ls spdd/prompt/*.md >/dev/null 2>&1; then
-  bash scripts/reasons-lint.sh || fail "reasons-lint"
-else
-  echo "  no SPDD prompt files, skipping"
-fi
+bash scripts/reasons-lint.sh || fail "reasons-lint"
 
 echo "▶ pre-push: format-check";  make -s format-check || fail "format-check"
 echo "▶ pre-push: lint";          make -s lint         || fail "lint"
