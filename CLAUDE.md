@@ -35,15 +35,33 @@ pnpm exec jest -t "returns 200 with an array of sessions"
 ## Architecture
 
 **API layering:** `routes/*` (parse and validate input, map results to HTTP status) → `services/*` (business rules and all Prisma access) → `lib/prisma.ts` (shared client). Use `routes/training-sessions.ts` → `services/trainingSessionService.ts` as the reference. Two known exceptions are planted on purpose; don't copy them:
+
 - `routes/admin.ts` creates its own `PrismaClient`.
 - `GET /search` in `routes/training-sessions.ts` calls Prisma directly.
 
 **Domain (baseline):** only `TrainingSession` exists (LATC-1: browse sessions). It has a `capacity` and a `registered` counter. Registration and everything after it (LATC-2 onwards) are trainee exercises and are not implemented yet. Read the Jira story before building one.
 
-**Frontend:** `app/src/api.ts` is the HTTP client. The list page shows a `TrainingSessionCard` per session. Shared types live in `app/src/types`.
+**Package guides:** [api/CLAUDE.md](api/CLAUDE.md) and [app/CLAUDE.md](app/CLAUDE.md) hold the package-specific rules.
+
+**Frontend:** `app/src/api.ts` is the intended HTTP client. It doesn't exist in the baseline yet (the list page still calls `fetch` inline), and the first story that needs a new call creates it. The list page shows a `TrainingSessionCard` per session. Shared types live in `app/src/types`.
+
+## Harness
+
+Story flow: `/kickoff LATC-N` → `/spdd-analysis` → `/spdd-reasons-canvas` → `/spdd-generate` → `/sensor-and-fix` → `/finish-dev`. What the agent may do alone is defined in AGENT.md §4 AGENT_BOUNDARY.
+
+| Piece                                                     | What it does                                                                   |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `scripts/reasons-lint.sh` (`make reasons-lint`)           | SPDD prompts have all 7 REASONS sections, in order and non-empty               |
+| `scripts/branch-name-check.sh` (`make branch-name-check`) | branch is `latc-<N>-<slug>`; `main` is exempt, others via `BRANCH_NAME_EXEMPT` |
+| `.husky/pre-commit`                                       | branch-name check + reasons-lint on staged prompts                             |
+| `.husky/pre-push`                                         | both sensors + format-check, lint, test (+ Gitleaks/Trivy if installed)        |
+| CI `mr-check` / `pr-check`                                | reasons-lint as a merge gate, then test, lint, format                          |
+| `.claude/hooks/prettier-on-write.sh`                      | PostToolUse: Prettier on every Write/Edit                                      |
+| `.claude/hooks/block-push-to-main.sh`                     | PreToolUse: blocks `git push … main`                                           |
+| skills `commit`, `mr`                                     | `[LATC-N]` commit; push + MR/PR + Slack notification                           |
 
 ## Gotchas
 
 - Schema changes are applied with `prisma db push` (no migration files). The Docker entrypoint runs it on every container start.
 - `docs/trainer-only/` is trainer material. Don't read it for implementation hints or modify it.
-- The pre-push hook runs test, lint, format-check, and Trivy. CI (`pr-check`) runs test, lint, and format-check.
+- The pre-push hook runs both sensors, test, lint, format-check, and Gitleaks/Trivy when installed. CI (`pr-check` / `mr-check`) runs reasons-lint, test, lint, and format-check.

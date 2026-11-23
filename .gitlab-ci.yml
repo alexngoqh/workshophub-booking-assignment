@@ -17,12 +17,13 @@ mr-check:
   stage: check
   image: node:24-slim
   variables:
-    DATABASE_URL: "file:../database/workshophub-ci.sqlite"
+    DATABASE_URL: 'file:../database/workshophub-ci.sqlite'
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   before_script:
     - npm install -g pnpm@9 --quiet
   script:
+    - bash scripts/reasons-lint.sh
     - pnpm install --frozen-lockfile
     - (cd api && pnpm exec prisma generate)
     - (cd api && pnpm exec prisma db push)
@@ -37,7 +38,7 @@ gitleaks:
   stage: security
   image:
     name: zricethezav/gitleaks:latest
-    entrypoint: [""]
+    entrypoint: ['']
   rules:
     - if: $CI_PIPELINE_SOURCE == 'push'
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -51,7 +52,7 @@ trivy:
   stage: security
   image:
     name: aquasec/trivy:latest
-    entrypoint: [""]
+    entrypoint: ['']
   rules:
     - if: $CI_PIPELINE_SOURCE == 'push'
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
