@@ -40,6 +40,27 @@ export type RegisterResult =
       session: SessionCounts
     }
 
+export type CancelResult =
+  | { kind: 'not_found' }
+  | { kind: 'already_cancelled' }
+  | {
+      kind: 'cancelled'
+      registration: RegistrationDetails
+      promoted: RegistrationDetails | null
+      session: SessionCounts
+    }
+
+export interface RegistrationStatusView {
+  id: number
+  sessionId: number
+  status: RegistrationStatus
+  position: number | null
+}
+
+export type RegistrationLookupResult =
+  | { kind: 'not_found' }
+  | { kind: 'found'; view: RegistrationStatusView }
+
 type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
 
 interface RegistrationRow {
@@ -84,7 +105,7 @@ function details(row: RegistrationRow): RegistrationDetails {
 
 // Position is derived (never stored): 1-based rank by id among the session's waitlisted rows.
 async function waitlistPosition(
-  tx: Tx,
+  tx: Tx | typeof prisma,
   sessionId: number,
   registrationId: number
 ): Promise<number> {
@@ -152,4 +173,103 @@ export async function registerForSession(
     },
     { maxWait: 5000, timeout: 10000 }
   )
+}
+
+// Promote the head of the session's waitlist. Ordered by id to match the position shown by
+// LATC-3. The status-conditional update means a concurrent promoter can't win the same row;
+// on a lost race, retry once with the next head.
+async function promoteNext(tx: Tx, sessionId: number): Promise<RegistrationDetails | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const head = await tx.registration.findFirst({
+      where: { sessionId, status: REGISTRATION_STATUS.waitlisted },
+      orderBy: { id: 'asc' },
+    })
+    if (!head) {
+      return null
+    }
+
+    const won = await tx.registration.updateMany({
+      where: { id: head.id, status: REGISTRATION_STATUS.waitlisted },
+      data: { status: REGISTRATION_STATUS.confirmed },
+    })
+    if (won.count === 1) {
+      return details({ ...head, status: REGISTRATION_STATUS.confirmed })
+    }
+  }
+  return null
+}
+
+export async function cancelRegistration(
+  sessionId: number,
+  registrationId: number
+): Promise<CancelResult> {
+  return prisma.$transaction(
+    async (tx) => {
+      const reg = await tx.registration.findFirst({ where: { id: registrationId, sessionId } })
+      if (!reg) {
+        return { kind: 'not_found' }
+      }
+      if (reg.status === REGISTRATION_STATUS.cancelled) {
+        return { kind: 'already_cancelled' }
+      }
+
+      const done = await tx.registration.updateMany({
+        where: { id: reg.id, status: reg.status },
+        data: { status: REGISTRATION_STATUS.cancelled },
+      })
+      if (done.count === 0) {
+        return { kind: 'already_cancelled' }
+      }
+
+      let promoted: RegistrationDetails | null = null
+
+      if (reg.status === REGISTRATION_STATUS.confirmed) {
+        const session = await tx.trainingSession.findUniqueOrThrow({ where: { id: sessionId } })
+        // Only hand the seat on if the session is not over capacity (e.g. after an admin
+        // lowered capacity).
+        if (session.registered - 1 < session.capacity) {
+          promoted = await promoteNext(tx, sessionId)
+        }
+        // With a promotion the freed seat is refilled, so registered is not written at all
+        // (net zero). Without one, release the seat.
+        if (promoted === null) {
+          await tx.trainingSession.updateMany({
+            where: { id: sessionId, registered: { gt: 0 } },
+            data: { registered: { decrement: 1 } },
+          })
+        }
+      }
+
+      // LATC-8: notify promoted employee here (out of scope for LATC-71)
+
+      return {
+        kind: 'cancelled',
+        registration: details({ ...reg, status: REGISTRATION_STATUS.cancelled }),
+        promoted,
+        session: await sessionCounts(tx, sessionId),
+      }
+    },
+    { maxWait: 5000, timeout: 10000 }
+  )
+}
+
+export async function getRegistrationStatus(
+  sessionId: number,
+  registrationId: number
+): Promise<RegistrationLookupResult> {
+  const reg = await prisma.registration.findFirst({
+    where: { id: registrationId, sessionId },
+    select: { id: true, sessionId: true, status: true },
+  })
+  if (!reg) {
+    return { kind: 'not_found' }
+  }
+
+  const status = reg.status as RegistrationStatus
+  const position =
+    status === REGISTRATION_STATUS.waitlisted
+      ? await waitlistPosition(prisma, sessionId, reg.id)
+      : null
+
+  return { kind: 'found', view: { id: reg.id, sessionId: reg.sessionId, status, position } }
 }

@@ -1,7 +1,37 @@
-import { useState, type FormEvent } from 'react'
-import type { TrainingSession } from '../types'
-import { registerForSession } from '../api'
+import { useEffect, useState, type FormEvent } from 'react'
+import type { RegistrationStatus, TrainingSession } from '../types'
+import { cancelRegistration, getRegistration, registerForSession } from '../api'
 import './TrainingSessionCard.css'
+
+// The browser's own registration id per session, so status survives a refresh (no auth).
+// Storage can be unavailable (private mode), so every access is best-effort.
+const storageKey = (sessionId: number) => 'workshophub.registration.' + sessionId
+
+function loadMyRegistrationId(sessionId: number): number | null {
+  try {
+    const raw = window.localStorage.getItem(storageKey(sessionId))
+    const id = raw === null ? NaN : Number(raw)
+    return Number.isInteger(id) && id > 0 ? id : null
+  } catch {
+    return null
+  }
+}
+
+function saveMyRegistrationId(sessionId: number, registrationId: number): void {
+  try {
+    window.localStorage.setItem(storageKey(sessionId), String(registrationId))
+  } catch {
+    // ignore
+  }
+}
+
+function clearMyRegistrationId(sessionId: number): void {
+  try {
+    window.localStorage.removeItem(storageKey(sessionId))
+  } catch {
+    // ignore
+  }
+}
 
 interface Props {
   session: TrainingSession
@@ -42,9 +72,60 @@ function TrainingSessionCard({ session }: Props) {
   const [confirmation, setConfirmation] = useState<string | null>(null)
   const [waitlisted, setWaitlisted] = useState<number | null>(null)
   const [myPosition, setMyPosition] = useState<number | null>(null)
+  const [myRegistrationId, setMyRegistrationId] = useState<number | null>(null)
+  const [myStatus, setMyStatus] = useState<RegistrationStatus | null>(null)
+  const [cancelling, setCancelling] = useState(false)
 
   const spotsLeft = session.capacity - registered
   const isFull = spotsLeft <= 0
+
+  useEffect(() => {
+    const id = loadMyRegistrationId(session.id)
+    if (id === null) {
+      return
+    }
+    getRegistration(session.id, id).then((result) => {
+      if (result.ok) {
+        setMyRegistrationId(id)
+        setMyStatus(result.data.status)
+        setMyPosition(result.data.position)
+      } else if (result.status === 404) {
+        clearMyRegistrationId(session.id)
+      }
+    })
+  }, [session.id])
+
+  async function handleCancel() {
+    if (myRegistrationId === null) {
+      return
+    }
+    if (
+      !window.confirm(`Are you sure you want to cancel your registration for ${session.title}?`)
+    ) {
+      return
+    }
+
+    setCancelling(true)
+    setError(null)
+    const result = await cancelRegistration(session.id, myRegistrationId)
+    setCancelling(false)
+
+    if (result.ok) {
+      // promotedRegistrationId is deliberately not shown: promotion is invisible to the canceller.
+      setRegistered(result.data.session.registered)
+      setWaitlisted(result.data.session.waitlisted)
+      setMyStatus('cancelled')
+      setMyPosition(null)
+      setConfirmation('Your registration has been cancelled')
+      return
+    }
+
+    if (result.status === 409) {
+      setMyStatus('cancelled')
+    } else {
+      setError(result.error)
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -60,6 +141,9 @@ function TrainingSessionCard({ session }: Props) {
     }
 
     const { data } = result
+    saveMyRegistrationId(session.id, data.id)
+    setMyRegistrationId(data.id)
+    setMyStatus(data.status)
     setRegistered(data.session.registered)
     setWaitlisted(data.session.waitlisted)
     if (data.status === 'waitlisted') {
@@ -118,8 +202,29 @@ function TrainingSessionCard({ session }: Props) {
         </div>
       </div>
 
-      {myPosition !== null && (
+      {myStatus === 'confirmed' && (
+        <p className="session-card__my-status session-card__status--confirmed">
+          Your status: Confirmed
+        </p>
+      )}
+      {myStatus === 'waitlisted' && myPosition !== null && (
         <p className="session-card__my-status">Your status: Waitlisted (position {myPosition})</p>
+      )}
+
+      {(myStatus === 'confirmed' || myStatus === 'waitlisted') && (
+        <button
+          type="button"
+          className="session-card__button session-card__cancel"
+          disabled={cancelling}
+          onClick={handleCancel}
+        >
+          Cancel Registration
+        </button>
+      )}
+      {myStatus === 'cancelled' && (
+        <span className="session-card__cancelled" aria-disabled="true">
+          Cancelled
+        </span>
       )}
 
       {confirmation && (
@@ -128,7 +233,13 @@ function TrainingSessionCard({ session }: Props) {
         </p>
       )}
 
-      {formOpen ? (
+      {error && !formOpen && (
+        <p className="session-card__error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {myStatus === 'confirmed' || myStatus === 'waitlisted' ? null : formOpen ? (
         <form className="session-card__form" onSubmit={handleSubmit} noValidate>
           <label className="session-card__field">
             Name
