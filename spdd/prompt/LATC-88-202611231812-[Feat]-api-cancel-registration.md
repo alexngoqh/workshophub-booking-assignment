@@ -193,10 +193,11 @@ Test-first: write the tests, see them fail, then implement.
    - `window.confirm('Are you sure you want to cancel your registration for <title>?')`.
    - On success: counts from `data.session`, `myStatus = 'cancelled'`, message 'Your registration has been cancelled'.
    - On a 409: `myStatus = 'cancelled'`.
+   - Any other failure: set `error`. It is rendered with `role="alert"` even when the register form is closed.
 5. Render:
    - "Your status: Confirmed" or "Waitlisted (position N)".
    - "Cancel Registration" for confirmed/waitlisted. The register button is hidden while you hold a registration.
-   - A disabled "Cancelled" after cancelling.
+   - A disabled "Cancelled" after cancelling. The Register/Join button shows again, so the employee can register anew.
 
 ### 8. Verify
 
