@@ -1,4 +1,7 @@
-import { validateRegistrationInput } from '../../src/services/registrationService'
+import {
+  REGISTRATION_STATUS,
+  validateRegistrationInput,
+} from '../../src/services/registrationService'
 
 jest.mock('../../src/lib/prisma', () => ({
   __esModule: true,
@@ -37,5 +40,15 @@ describe('validateRegistrationInput', () => {
   it('handles a null or undefined body', () => {
     expect(validateRegistrationInput(null)).toEqual(['name is required', 'email is required'])
     expect(validateRegistrationInput(undefined)).toEqual(['name is required', 'email is required'])
+  })
+})
+
+describe('REGISTRATION_STATUS', () => {
+  it('contains exactly confirmed, waitlisted and cancelled', () => {
+    expect(Object.values(REGISTRATION_STATUS).sort()).toEqual([
+      'cancelled',
+      'confirmed',
+      'waitlisted',
+    ])
   })
 })

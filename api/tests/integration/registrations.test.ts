@@ -47,7 +47,11 @@ describe('POST /api/training-sessions/:id/registrations', () => {
     expect(res.body).toMatchObject({ sessionId, name: 'Ada Lovelace', email: 'ada@example.com' })
     expect(res.body).toHaveProperty('id')
     expect(res.body).toHaveProperty('createdAt')
+    expect(res.body.status).toBe('confirmed')
     expect(res.body.session.registered).toBe(1)
+    expect(res.body.session.waitlisted).toBe(0)
+    const row = await prisma.registration.findUniqueOrThrow({ where: { id: res.body.id } })
+    expect(row.status).toBe('confirmed')
   })
 
   it('increments registered by exactly 1 in the database', async () => {
@@ -125,24 +129,70 @@ describe('POST /api/training-sessions/:id/registrations', () => {
     expect(res.body.error).toBe('Invalid session ID')
   })
 
-  it('returns 409 for a full session and writes nothing', async () => {
+  it('returns 202 waitlisted for a full session without touching registered', async () => {
     const sessionId = await createSession(1, 1)
 
     const res = await request(server)
       .post(`/api/training-sessions/${sessionId}/registrations`)
       .send({ name: 'Ada', email: 'ada@example.com' })
 
-    expect(res.status).toBe(409)
-    const session = await prisma.trainingSession.findUniqueOrThrow({ where: { id: sessionId } })
-    expect(session.registered).toBe(1)
-    expect(await prisma.registration.count({ where: { sessionId } })).toBe(0)
+    expect(res.status).toBe(202)
+    expect(res.body.status).toBe('waitlisted')
+    expect(res.body.position).toBe(1)
+    expect(res.body.session.registered).toBe(1)
+    expect(res.body.session.waitlisted).toBe(1)
+    const row = await prisma.registration.findUniqueOrThrow({ where: { id: res.body.id } })
+    expect(row.status).toBe('waitlisted')
   })
 
-  it('never exceeds capacity under concurrent registrations', async () => {
+  it('assigns waitlist positions 1, 2, 3 in order', async () => {
+    const sessionId = await createSession(1, 1)
+
+    const positions: number[] = []
+    for (const n of [1, 2, 3]) {
+      const res = await request(server)
+        .post(`/api/training-sessions/${sessionId}/registrations`)
+        .send({ name: `Waiter ${n}`, email: `waiter${n}@example.com` })
+      positions.push(res.body.position)
+    }
+
+    expect(positions).toEqual([1, 2, 3])
+  })
+
+  it('tracks the waitlisted count separately from registered', async () => {
     const sessionId = await createSession(1)
 
+    await request(server)
+      .post(`/api/training-sessions/${sessionId}/registrations`)
+      .send({ name: 'Seat', email: 'seat@example.com' })
+    await request(server)
+      .post(`/api/training-sessions/${sessionId}/registrations`)
+      .send({ name: 'Wait 1', email: 'wait1@example.com' })
+    const last = await request(server)
+      .post(`/api/training-sessions/${sessionId}/registrations`)
+      .send({ name: 'Wait 2', email: 'wait2@example.com' })
+
+    const session = await prisma.trainingSession.findUniqueOrThrow({ where: { id: sessionId } })
+    expect(session.registered).toBe(1)
+    expect(last.body.session.waitlisted).toBe(2)
+  })
+
+  it('waitlists the first registrant of a capacity-0 session at position 1', async () => {
+    const sessionId = await createSession(0)
+
+    const res = await request(server)
+      .post(`/api/training-sessions/${sessionId}/registrations`)
+      .send({ name: 'Ada', email: 'ada@example.com' })
+
+    expect(res.status).toBe(202)
+    expect(res.body.position).toBe(1)
+  })
+
+  it('confirms up to capacity and waitlists the rest under concurrency', async () => {
+    const sessionId = await createSession(2)
+
     const responses = await Promise.all(
-      [1, 2, 3, 4, 5].map((n) =>
+      [1, 2, 3, 4, 5, 6].map((n) =>
         request(server)
           .post(`/api/training-sessions/${sessionId}/registrations`)
           .send({ name: `Person ${n}`, email: `person${n}@example.com` })
@@ -150,9 +200,15 @@ describe('POST /api/training-sessions/:id/registrations', () => {
     )
 
     const statuses = responses.map((r) => r.status).sort()
-    expect(statuses).toEqual([201, 409, 409, 409, 409])
+    expect(statuses).toEqual([201, 201, 202, 202, 202, 202])
+    const positions = responses
+      .filter((r) => r.status === 202)
+      .map((r) => r.body.position as number)
+      .sort()
+    expect(positions).toEqual([1, 2, 3, 4])
     const session = await prisma.trainingSession.findUniqueOrThrow({ where: { id: sessionId } })
-    expect(session.registered).toBe(1)
-    expect(await prisma.registration.count({ where: { sessionId } })).toBe(1)
+    expect(session.registered).toBe(2)
+    expect(await prisma.registration.count({ where: { sessionId, status: 'confirmed' } })).toBe(2)
+    expect(await prisma.registration.count({ where: { sessionId, status: 'waitlisted' } })).toBe(4)
   })
 })
