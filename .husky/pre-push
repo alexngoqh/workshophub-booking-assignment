@@ -1,0 +1,41 @@
+#!/usr/bin/env sh
+# pre-push — gate every push with the harness sensors and the quality checks.
+#   1. branch-name-check on every branch being pushed
+#   2. reasons-lint on all SPDD prompt files
+#   3. format-check, lint, test
+#   4. security (Gitleaks/Trivy) if installed
+# Bypass in an emergency with: git push --no-verify
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR" || exit 1
+
+fail() { echo "✗ pre-push: $1 failed — push aborted (run /sensor-and-fix)"; exit 1; }
+
+# git feeds "<local ref> <local sha> <remote ref> <remote sha>" per ref on stdin
+echo "▶ pre-push: branch name"
+checked=0
+while read -r local_ref _local_sha _remote_ref _remote_sha; do
+  case "$local_ref" in
+    refs/heads/*)
+      bash scripts/branch-name-check.sh "${local_ref#refs/heads/}" || fail "branch-name-check"
+      checked=1
+      ;;
+  esac
+done
+[ "$checked" -eq 1 ] || bash scripts/branch-name-check.sh || fail "branch-name-check"
+
+echo "▶ pre-push: REASONS structure"
+bash scripts/reasons-lint.sh || fail "reasons-lint"
+
+echo "▶ pre-push: format-check";  make -s format-check || fail "format-check"
+echo "▶ pre-push: lint";          make -s lint         || fail "lint"
+echo "▶ pre-push: test";          make -s test         || fail "test"
+
+if command -v gitleaks >/dev/null 2>&1 || command -v trivy >/dev/null 2>&1; then
+  echo "▶ pre-push: security"
+  bash scripts/security.sh || fail "security"
+else
+  echo "▶ pre-push: gitleaks/trivy not installed, skipping security scan (CI still runs it)"
+fi
+
+echo "✓ pre-push: all checks passed"

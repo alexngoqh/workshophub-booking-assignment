@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+# pre-commit — run harness sensors before every commit.
+#   1. branch-name-check: current branch must be latc-<story>-<slug> (or exempt)
+#   2. reasons-lint:      staged SPDD prompt files must follow the REASONS Canvas
+# Bypass in an emergency with: git commit --no-verify
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+
+echo "▶ pre-commit: branch name"
+bash "$ROOT_DIR/scripts/branch-name-check.sh" || exit 1
+
+STAGED_PROMPTS="$(git diff --cached --name-only --diff-filter=ACMR -- 'spdd/prompt/*.md')"
+if [ -n "$STAGED_PROMPTS" ]; then
+  echo "▶ pre-commit: REASONS structure"
+  # Paths may contain spaces/brackets; feed them one per line.
+  printf '%s\n' "$STAGED_PROMPTS" | while IFS= read -r f; do printf '%s\0' "$ROOT_DIR/$f"; done \
+    | xargs -0 bash "$ROOT_DIR/scripts/reasons-lint.sh" || exit 1
+else
+  echo "▶ pre-commit: no staged SPDD prompt files, skipping REASONS check"
+fi

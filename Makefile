@@ -2,7 +2,7 @@ SHELL := /bin/bash
 ROOT_DIR := $(shell pwd)
 API_DIR := $(ROOT_DIR)/api
 
-.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security prod-up prod-down prod-logs
+.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security reasons-lint branch-name-check prod-up prod-down prod-logs
 
 ## setup: Install dependencies, generate Prisma client, push schema, seed database
 setup:
@@ -70,3 +70,11 @@ prod-logs:
 
 help:
 	@grep -E '^## ' Makefile | sed 's/^## /  /'
+
+## reasons-lint: Check SPDD prompt files follow the REASONS Canvas structure
+reasons-lint:
+	@bash scripts/reasons-lint.sh
+
+## branch-name-check: Check the current branch follows latc-<story>-<slug>
+branch-name-check:
+	@bash scripts/branch-name-check.sh

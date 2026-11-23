@@ -57,3 +57,13 @@ An employee submits their name and email to register. The system confirms the re
 The `Registration` model will need to be added to the Prisma schema. Consider whether `registered` count is stored on the session row or computed from the registrations table.
 
 Need to consider the race condition when creating a registration and incrementing the count.
+
+## Day 4 run (2026-11-23)
+
+- **Original card:** LATC-2 (status: Backlog, untouched)
+- **Working copy:** LATC-16 "Alex Ngo: Employee can register for an available training session" (In Progress), reused, no new copy created
+- **Kicked off:** 2026-11-23 by Alex Ngo via /kickoff (Day 4 training)
+- **Base:** `day4-training` (from `b2405f9` Initial commit, plus tooling)
+- **Branch:** `latc-2-register-day4`
+
+Requirements analysis: run `/spdd-analysis LATC-2` → `spdd/analysis/LATC-2-*`

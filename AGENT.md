@@ -137,15 +137,37 @@ do not leave a change that fails any of them.
 
 ## 4. AGENT_BOUNDARY
 
-<!-- PLACEHOLDER: not yet defined. Fill in the agent's scope of authority. -->
+What an agent may do on its own, what needs a human "yes" first, and what it must never do. Hooks and sensors enforce the rows marked 🔒. The others rely on the agent following this file.
 
-> **Placeholder — pending definition.**
->
-> Record here what the agent is and is not permitted to do: which files /
-> directories it may modify; which commands it may run autonomously vs. which
-> require approval (e.g. destructive `make reset-db`, pushing to `main`,
-> touching `docs/trainer-only/`); and the review / approval workflow that
-> governs its changes.
+### May do autonomously
+
+- Read anything in the repo except `docs/trainer-only/`.
+- Edit `api/`, `app/`, `e2e/`, `openspec/`, `spdd/`, `stories/` and tests, as long as the edit is within the scope of the current LATC story.
+- Run read-only and local checks: `make test`, `make test-unit`, `make lint`, `make format-check`, `make reasons-lint`, `make branch-name-check`, `make build`, `make dev`, and the E2E suite in `e2e/`.
+- Create a `latc-<N>-<slug>` branch and make local commits through the hooks (`/kickoff`, the `commit` skill).
+- Read Jira (`jira` MCP).
+
+### Needs explicit approval first
+
+- `make reset-db` or any other destructive DB command.
+- `git push`, opening an MR/PR, or posting to Slack (the `mr` skill asks before each one).
+- Moving a Jira card (except the transitions `/kickoff` and `/finish-dev` make on the card the user named), creating or editing Jira issues, and comments.
+- Changing harness files: `AGENT.md`, `CLAUDE.md` files, `.claude/**`, `.husky/**`, `scripts/*.sh`, CI config, `Makefile`.
+- Adding or upgrading dependencies.
+- Renaming branches, rebasing or force-pushing a shared branch.
+
+### Never
+
+- 🔒 Push to `main` (`.claude/hooks/block-push-to-main.sh`).
+- 🔒 Commit on a branch that isn't `latc-<N>-<slug>` without an explicit exemption (`.husky/pre-commit`).
+- Skip hooks (`--no-verify`), or edit a sensor or test to make it pass.
+- Read or modify `docs/trainer-only/`.
+- Delete `latc-*` feature branches, including after merge.
+- Commit secrets, `.env*` or `*.sqlite`.
+
+### Review workflow
+
+`/kickoff` → `/spdd-analysis` → `/spdd-reasons-canvas` → `/spdd-generate` → `/sensor-and-fix` → `/finish-dev` (commit → push → MR → Slack → Jira **In Review**). A human reviews and merges the MR. Agents never merge.
 
 ---
 

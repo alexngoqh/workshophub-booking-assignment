@@ -1,5 +1,5 @@
 ---
-description: "Kick off a Jira card for development: read it with getJiraIssue, then either copy it to a new card titled 'Alex Ngo: <original title>' and move the copy into In Development, or — if it is already in In Development — leave an attempt comment on the original via addCommentToJiraIssue. Save the story to ./stories, then create and checkout a latc-{id}-{desc} branch after confirming its name, and stop. Never mutates the original card and never pushes."
+description: "Kick off a Jira card for development: read it with getJiraIssue, then either copy it to a new card titled 'Alex Ngo: <original title>' and move the copy into In Development, or — if it is already in In Development — leave an attempt comment on the original via addCommentToJiraIssue. Save kickoff metadata to ./stories, then create and checkout a latc-{id}-{desc} branch after confirming its name, and stop. Never mutates the original card and never pushes."
 ---
 
 // allowed-tools
@@ -47,7 +47,9 @@ Edit tool, so do not reach for one.
 
 2. **Read the card.** Call `getJiraIssue` for the key. Capture: current status (which
    column), summary/title, description, issue type, project key, and any labels,
-   components, or custom fields worth copying.
+   components, or custom fields worth copying. Use the description only to copy it
+   onto the new card. Do NOT analyse, summarise or interpret the requirements —
+   that is `/spdd-analysis`'s job.
 
 3. **Branch on current status** — is the card in the **In Development** column?
 
@@ -68,9 +70,10 @@ Edit tool, so do not reach for one.
 
 4. **Save the story to `./stories`.** With `Bash` (heredoc — no Write tool is
    whitelisted), ensure `./stories` exists (`mkdir -p ./stories`) and write
-   `./stories/<KEY>.md` (e.g. `./stories/LATC-2.md`) containing: the original title,
-   the copy's key (if one was created), the current status, the description, and the
-   branch that will be created.
+   `./stories/<KEY>.md` containing ONLY kickoff metadata: original key and title, the
+   copy's key (if any), current status, kickoff date, the branch name, and the line
+   "Requirements analysis: run `/spdd-analysis <KEY>` → `spdd/analysis/<KEY>-*`".
+   Do NOT copy the description or acceptance criteria into this file.
 
 5. **Propose and confirm the branch.** Build `latc-{id}-{desc}`:
    - `{id}` = the numeric part of the card key (`LATC-2` → `2`).
@@ -85,7 +88,7 @@ Edit tool, so do not reach for one.
    use `Question` to decide (switch to it vs. abort) — do **not** force or delete.
 
 7. **Confirm and stop.** Report the branch name (and the new card key or comment, if
-   any) and **stop**. Do **not** push, commit, or run any further git mutation. Pushing
+   any), tell the user the next step is `/spdd-analysis <KEY>`, and **stop**. Do **not** push, commit, or run any further git mutation. Pushing
    is a separate, explicit action the user takes.
 
 ## Done when

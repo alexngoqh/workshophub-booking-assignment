@@ -32,6 +32,7 @@ pnpm exec jest -t "promotes first waitlisted"
 ```
 
 **Test databases are isolated.**
+
 - Jest uses `api/database/workshophub-test.sqlite`. `tests/globalSetup.ts` force-resets and reseeds it once per run, so tests never touch the dev DB.
 - Integration tests create their own sessions via `createTestSession()` in `tests/integration/helpers.ts` and clean up afterwards. They don't depend on the seed data.
 - E2E runs on its own ports (API 3101, app 5273) with its own SQLite file, started by Playwright's `webServer`. Set `SLOW_MO=<ms>` for a watchable headed run.
@@ -39,10 +40,12 @@ pnpm exec jest -t "promotes first waitlisted"
 ## Architecture
 
 **API layering:** `routes/*` (parse and validate input, map results to HTTP status) → `services/*` (business rules and all Prisma access) → `lib/prisma.ts` (shared client). Use `routes/registrations.ts` → `services/registrationService.ts` as the reference. Two known exceptions are planted on purpose; don't copy them:
+
 - `routes/admin.ts` creates its own `PrismaClient`.
 - `GET /search` in `routes/training-sessions.ts` calls Prisma directly.
 
 **Registration state machine** (`Registration.status`: `confirmed | waitlisted | cancelled`). This is the core of the domain and spans several stories:
+
 - **Register:** if `registered < capacity` → `confirmed` (201) and `TrainingSession.registered` increments. Otherwise → `waitlisted` (202 with `position`). If `registrationDeadline` has passed (server time, UTC) → 422.
 - **Cancel:** a confirmed registration → `cancelled`. In the **same transaction**, the oldest waitlisted registration (by `createdAt`) is promoted to `confirmed`, so the net change to `registered` is 0. With no waitlist, `registered` decrements. The response includes `promotedRegistrationId`.
 - **Audit:** every status transition writes an immutable `AuditLog` row (`fromStatus → toStatus`) inside the same transaction as the change. Atomicity is enforced by `tests/integration/*-atomicity.test.ts` via `faultInjection.ts`.
@@ -54,8 +57,26 @@ pnpm exec jest -t "promotes first waitlisted"
 
 **Specs:** OpenSpec lives in `openspec/`. `openspec/specs/` holds the current capability specs (training-sessions, registrations, registration-audit, notifications); proposals go in `openspec/changes/`. Check the relevant spec before changing behaviour.
 
+## Harness
+
+Package guides: [api/CLAUDE.md](api/CLAUDE.md) and [app/CLAUDE.md](app/CLAUDE.md). What the agent may do alone is defined in AGENT.md §4 AGENT_BOUNDARY.
+
+Story flow: `/kickoff LATC-N` → `/spdd-analysis` → `/spdd-reasons-canvas` → `/spdd-generate` → `/sensor-and-fix` → `/finish-dev`.
+
+| Piece                                                     | What it does                                                                                                       |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `scripts/reasons-lint.sh` (`make reasons-lint`)           | SPDD prompts in `spdd/prompt/` have all 7 REASONS sections, in order and non-empty. Passes when there are none yet |
+| `scripts/branch-name-check.sh` (`make branch-name-check`) | branch is `latc-<N>-<slug>`; `main` is exempt, others via `BRANCH_NAME_EXEMPT`                                     |
+| `.husky/pre-commit`                                       | branch-name check + reasons-lint on staged prompts                                                                 |
+| `.husky/pre-push`                                         | both sensors + format-check, lint, test (+ Gitleaks/Trivy if installed)                                            |
+| CI `pr-check` / `mr-check`                                | reasons-lint as a merge gate, then test, lint, format                                                              |
+| `.claude/hooks/prettier-on-write.sh`                      | PostToolUse: Prettier on every Write/Edit                                                                          |
+| `.claude/hooks/block-push-to-main.sh`                     | PreToolUse: blocks direct pushes to the default branch                                                             |
+| `/kickoff`, `/sensor-and-fix`, `/finish-dev`              | start a story; run the sensors and fix failures; commit → push → MR → Slack → Jira In Review                       |
+| skills `commit`, `mr`                                     | `[LATC-N]` commit; push + MR/PR + Slack notification                                                               |
+
 ## Gotchas
 
 - Schema changes are applied with `prisma db push` (no migration files). The Docker entrypoint runs it on every container start.
 - `docs/trainer-only/` is trainer material. Don't read it for implementation hints or modify it.
-- The pre-push hook runs test, lint, format-check, and Trivy. CI (`pr-check`) runs test, lint, and format-check.
+- The pre-push hook runs both sensors, test, lint, format-check, and Gitleaks/Trivy when installed. CI (`pr-check` / `mr-check`) runs reasons-lint, test, lint, and format-check.
