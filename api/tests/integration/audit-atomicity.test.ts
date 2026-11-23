@@ -1,5 +1,4 @@
-import request from 'supertest'
-import app from '../../src/app'
+import { api } from './server'
 import prisma from '../../src/lib/prisma'
 import { createTestSession, deleteTestSessions } from './helpers'
 import { failInsideTransactions } from './faultInjection'
@@ -35,7 +34,7 @@ describe('Audit entry is atomic with the state change (LATC-9)', () => {
     const s = await session()
     restore = failInsideTransactions((model, method) => model === 'auditLog' && method === 'create')
 
-    const res = await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
+    const res = await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
 
     expect(res.status).toBe(500)
     expect(await prisma.registration.count({ where: { sessionId: s.id } })).toBe(0)
@@ -44,7 +43,7 @@ describe('Audit entry is atomic with the state change (LATC-9)', () => {
 
   it('cancellation is rolled back when writing its audit entry fails', async () => {
     const s = await session()
-    const a = (await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })).body
+    const a = (await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })).body
     restore = failInsideTransactions(
       (model, method, args) =>
         model === 'auditLog' &&
@@ -52,7 +51,7 @@ describe('Audit entry is atomic with the state change (LATC-9)', () => {
         (args as { data: { toStatus: string } }).data.toStatus === 'cancelled'
     )
 
-    const res = await request(app).delete(`${url(s.id)}/${a.id}`)
+    const res = await api().delete(`${url(s.id)}/${a.id}`)
 
     expect(res.status).toBe(500)
     expect(await statusOf(a.id)).toBe('confirmed')

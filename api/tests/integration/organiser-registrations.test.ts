@@ -1,5 +1,4 @@
-import request from 'supertest'
-import app from '../../src/app'
+import { api } from './server'
 import prisma from '../../src/lib/prisma'
 import { createTestSession, deleteTestSessions } from './helpers'
 
@@ -18,7 +17,7 @@ afterAll(async () => {
 const listUrl = (id: number | string) => `/api/training-sessions/${id}/registrations`
 
 async function register(sessionId: number, who: string) {
-  const res = await request(app)
+  const res = await api()
     .post(listUrl(sessionId))
     .send({ name: who, email: `${who}@example.com` })
   return res.body as { id: number }
@@ -31,9 +30,9 @@ describe('GET /api/training-sessions/:id/registrations (LATC-6)', () => {
     const b = await register(s.id, 'b')
     const c = await register(s.id, 'c') // waitlisted
     const d = await register(s.id, 'd') // waitlisted
-    await request(app).delete(`${listUrl(s.id)}/${d.id}`) // cancelled
+    await api().delete(`${listUrl(s.id)}/${d.id}`) // cancelled
 
-    const res = await request(app).get(listUrl(s.id))
+    const res = await api().get(listUrl(s.id))
 
     expect(res.status).toBe(200)
     expect(res.body.confirmed.map((r: { id: number }) => r.id)).toEqual([a.id, b.id])
@@ -46,7 +45,7 @@ describe('GET /api/training-sessions/:id/registrations (LATC-6)', () => {
     const s = await session()
     await register(s.id, 'ada')
 
-    const res = await request(app).get(listUrl(s.id))
+    const res = await api().get(listUrl(s.id))
 
     expect(res.body.confirmed[0]).toEqual({
       id: expect.any(Number),
@@ -60,18 +59,18 @@ describe('GET /api/training-sessions/:id/registrations (LATC-6)', () => {
 
   it('returns two empty arrays when nobody registered', async () => {
     const s = await session()
-    const res = await request(app).get(listUrl(s.id))
+    const res = await api().get(listUrl(s.id))
     expect(res.status).toBe(200)
     expect(res.body).toEqual({ confirmed: [], waitlisted: [] })
   })
 
   it('returns 404 for an unknown session', async () => {
-    const res = await request(app).get(listUrl(999999))
+    const res = await api().get(listUrl(999999))
     expect(res.status).toBe(404)
   })
 
   it('returns 400 for an invalid session id', async () => {
-    const res = await request(app).get(listUrl('abc'))
+    const res = await api().get(listUrl('abc'))
     expect(res.status).toBe(400)
   })
 })

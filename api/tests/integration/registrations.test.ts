@@ -1,5 +1,4 @@
-import request from 'supertest'
-import app from '../../src/app'
+import { api } from './server'
 import prisma from '../../src/lib/prisma'
 import { createTestSession, deleteTestSessions } from './helpers'
 
@@ -20,7 +19,7 @@ const url = (id: number | string) => `/api/training-sessions/${id}/registrations
 describe('POST /api/training-sessions/:id/registrations (LATC-2)', () => {
   it('returns 201 with registration details', async () => {
     const s = await session()
-    const res = await request(app).post(url(s.id)).send({ name: 'Ada', email: 'ada@example.com' })
+    const res = await api().post(url(s.id)).send({ name: 'Ada', email: 'ada@example.com' })
 
     expect(res.status).toBe(201)
     expect(res.body).toMatchObject({
@@ -35,39 +34,39 @@ describe('POST /api/training-sessions/:id/registrations (LATC-2)', () => {
 
   it('increments the registered count', async () => {
     const s = await session()
-    await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
-    await request(app).post(url(s.id)).send({ name: 'B', email: 'b@example.com' })
+    await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
+    await api().post(url(s.id)).send({ name: 'B', email: 'b@example.com' })
 
-    const after = await request(app).get(`/api/training-sessions/${s.id}`)
+    const after = await api().get(`/api/training-sessions/${s.id}`)
     expect(after.body.registered).toBe(2)
   })
 
   it('returns 400 when fields are missing', async () => {
     const s = await session()
-    const res = await request(app).post(url(s.id)).send({})
+    const res = await api().post(url(s.id)).send({})
     expect(res.status).toBe(400)
     expect(res.body.details).toEqual(['name is required', 'email is required'])
   })
 
   it('returns 400 for a malformed email', async () => {
     const s = await session()
-    const res = await request(app).post(url(s.id)).send({ name: 'Ada', email: 'not-an-email' })
+    const res = await api().post(url(s.id)).send({ name: 'Ada', email: 'not-an-email' })
     expect(res.status).toBe(400)
   })
 
   it('returns 404 when the session does not exist', async () => {
-    const res = await request(app).post(url(999999)).send({ name: 'Ada', email: 'a@example.com' })
+    const res = await api().post(url(999999)).send({ name: 'Ada', email: 'a@example.com' })
     expect(res.status).toBe(404)
   })
 
   it('returns 409 for a duplicate email (case-insensitive) and does not double count', async () => {
     const s = await session()
-    await request(app).post(url(s.id)).send({ name: 'Ada', email: 'ada@example.com' })
-    const res = await request(app).post(url(s.id)).send({ name: 'Ada', email: 'ADA@example.com ' })
+    await api().post(url(s.id)).send({ name: 'Ada', email: 'ada@example.com' })
+    const res = await api().post(url(s.id)).send({ name: 'Ada', email: 'ADA@example.com ' })
 
     expect(res.status).toBe(409)
     expect(res.body.error).toMatch(/already registered/)
-    const after = await request(app).get(`/api/training-sessions/${s.id}`)
+    const after = await api().get(`/api/training-sessions/${s.id}`)
     expect(after.body.registered).toBe(1)
   })
 
@@ -75,7 +74,7 @@ describe('POST /api/training-sessions/:id/registrations (LATC-2)', () => {
     const s = await session({ capacity: 3 })
     const results = await Promise.all(
       Array.from({ length: 8 }, (_, i) =>
-        request(app)
+        api()
           .post(url(s.id))
           .send({ name: `P${i}`, email: `p${i}@example.com` })
       )
@@ -97,8 +96,8 @@ describe('POST /api/training-sessions/:id/registrations (LATC-2)', () => {
 describe('Waitlist when a session is full (LATC-3)', () => {
   it('returns 202 waitlisted with position 1 and leaves registered unchanged', async () => {
     const s = await session({ capacity: 1 })
-    await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
-    const res = await request(app).post(url(s.id)).send({ name: 'B', email: 'b@example.com' })
+    await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
+    const res = await api().post(url(s.id)).send({ name: 'B', email: 'b@example.com' })
 
     expect(res.status).toBe(202)
     expect(res.body).toMatchObject({ status: 'waitlisted', position: 1 })
@@ -110,10 +109,10 @@ describe('Waitlist when a session is full (LATC-3)', () => {
 
   it('assigns positions 1, 2, 3 in order', async () => {
     const s = await session({ capacity: 1 })
-    await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
+    await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
     const positions: number[] = []
     for (const who of ['b', 'c', 'd']) {
-      const res = await request(app)
+      const res = await api()
         .post(url(s.id))
         .send({ name: who, email: `${who}@example.com` })
       positions.push(res.body.position)
@@ -123,22 +122,22 @@ describe('Waitlist when a session is full (LATC-3)', () => {
 
   it('tracks waitlisted separately from registered in the session payload', async () => {
     const s = await session({ capacity: 1 })
-    await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
-    await request(app).post(url(s.id)).send({ name: 'B', email: 'b@example.com' })
-    await request(app).post(url(s.id)).send({ name: 'C', email: 'c@example.com' })
+    await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
+    await api().post(url(s.id)).send({ name: 'B', email: 'b@example.com' })
+    await api().post(url(s.id)).send({ name: 'C', email: 'c@example.com' })
 
-    const one = await request(app).get(`/api/training-sessions/${s.id}`)
+    const one = await api().get(`/api/training-sessions/${s.id}`)
     expect(one.body).toMatchObject({ registered: 1, capacity: 1, waitlisted: 2 })
 
-    const all = await request(app).get('/api/training-sessions')
+    const all = await api().get('/api/training-sessions')
     expect(all.body.find((x: { id: number }) => x.id === s.id)).toMatchObject({ waitlisted: 2 })
   })
 
   it('rejects a duplicate email that is already on the waitlist', async () => {
     const s = await session({ capacity: 1 })
-    await request(app).post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
-    await request(app).post(url(s.id)).send({ name: 'B', email: 'b@example.com' })
-    const res = await request(app).post(url(s.id)).send({ name: 'B', email: 'B@example.com' })
+    await api().post(url(s.id)).send({ name: 'A', email: 'a@example.com' })
+    await api().post(url(s.id)).send({ name: 'B', email: 'b@example.com' })
+    const res = await api().post(url(s.id)).send({ name: 'B', email: 'B@example.com' })
 
     expect(res.status).toBe(409)
     expect(

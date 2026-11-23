@@ -1,15 +1,14 @@
-import request from 'supertest'
-import app from '../../src/app'
+import { api } from './server'
 
 describe('GET /api/training-sessions (LATC-1)', () => {
   it('returns 200 with an array of sessions', async () => {
-    const response = await request(app).get('/api/training-sessions')
+    const response = await api().get('/api/training-sessions')
     expect(response.status).toBe(200)
     expect(Array.isArray(response.body)).toBe(true)
   })
 
   it('returns sessions with expected fields', async () => {
-    const response = await request(app).get('/api/training-sessions')
+    const response = await api().get('/api/training-sessions')
     expect(response.status).toBe(200)
     if (response.body.length > 0) {
       const session = response.body[0]
@@ -28,24 +27,24 @@ describe('GET /api/training-sessions (LATC-1)', () => {
 
 describe('GET /api/training-sessions/:id (LATC-1)', () => {
   it('returns 200 with a session when id exists', async () => {
-    const allResponse = await request(app).get('/api/training-sessions')
+    const allResponse = await api().get('/api/training-sessions')
     expect(allResponse.status).toBe(200)
     expect(allResponse.body.length).toBeGreaterThan(0)
 
     const firstId = allResponse.body[0].id
-    const response = await request(app).get(`/api/training-sessions/${firstId}`)
+    const response = await api().get(`/api/training-sessions/${firstId}`)
     expect(response.status).toBe(200)
     expect(response.body.id).toBe(firstId)
   })
 
   it('returns 404 when session does not exist', async () => {
-    const response = await request(app).get('/api/training-sessions/999999')
+    const response = await api().get('/api/training-sessions/999999')
     expect(response.status).toBe(404)
     expect(response.body.error).toBeDefined()
   })
 
   it('returns 400 for invalid id', async () => {
-    const response = await request(app).get('/api/training-sessions/not-a-number')
+    const response = await api().get('/api/training-sessions/not-a-number')
     expect(response.status).toBe(400)
   })
 })
