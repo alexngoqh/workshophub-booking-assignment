@@ -3,6 +3,7 @@ import {
   RegistrationInput,
   cancelRegistration,
   getRegistrationStatus,
+  listRegistrations,
   registerForSession,
   validateRegistrationInput,
 } from '../services/registrationService'
@@ -46,6 +47,30 @@ router.post('/', async (req: Request<{ id: string }>, res: Response) => {
   } catch (error) {
     console.error('Error creating registration:', error)
     res.status(500).json({ error: 'Failed to create registration' })
+  }
+})
+
+router.get('/', async (req: Request<{ id: string }>, res: Response) => {
+  try {
+    const sessionId = parseId(req.params.id)
+    if (sessionId === null) {
+      res.status(400).json({ error: 'Invalid session ID' })
+      return
+    }
+
+    const result = await listRegistrations(sessionId)
+
+    switch (result.kind) {
+      case 'session_not_found':
+        res.status(404).json({ error: 'Training session not found' })
+        return
+      case 'found':
+        res.status(200).json(result.roster)
+        return
+    }
+  } catch (error) {
+    console.error('Error listing registrations:', error)
+    res.status(500).json({ error: 'Failed to list registrations' })
   }
 })
 

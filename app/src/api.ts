@@ -1,5 +1,7 @@
 import type {
   CancelResponse,
+  RegistrationRoster,
+  TrainingSession,
   RegistrationInput,
   RegistrationResponse,
   RegistrationStatusView,
@@ -72,4 +74,16 @@ export function getRegistration(
     { method: 'GET' },
     'Could not load registration'
   )
+}
+
+export function getSession(sessionId: number): Promise<ApiResult<TrainingSession>> {
+  return request(
+    `${API_BASE}/api/training-sessions/${sessionId}`,
+    { method: 'GET' },
+    'Could not load session'
+  )
+}
+
+export function listRegistrations(sessionId: number): Promise<ApiResult<RegistrationRoster>> {
+  return request(registrationsUrl(sessionId), { method: 'GET' }, 'Could not load registrations')
 }

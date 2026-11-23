@@ -48,3 +48,16 @@ export interface RegistrationStatusView {
   status: RegistrationStatus
   position: number | null
 }
+
+export interface RegistrationListItem {
+  id: number
+  name: string
+  email: string
+  status: RegistrationStatus
+  createdAt: string
+}
+
+export interface RegistrationRoster {
+  confirmed: RegistrationListItem[]
+  waitlisted: RegistrationListItem[]
+}

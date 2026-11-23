@@ -278,3 +278,49 @@ export async function getRegistrationStatus(
 
   return { kind: 'found', view: { id: reg.id, sessionId: reg.sessionId, status, position } }
 }
+
+export interface RegistrationListItem {
+  id: number
+  name: string
+  email: string
+  status: RegistrationStatus
+  createdAt: Date
+}
+
+export interface RegistrationRoster {
+  confirmed: RegistrationListItem[]
+  waitlisted: RegistrationListItem[]
+}
+
+export type ListResult =
+  | { kind: 'session_not_found' }
+  | { kind: 'found'; roster: RegistrationRoster }
+
+// Organiser roster: non-cancelled registrations grouped by status, in queue order (id asc),
+// the same order waitlist positions and promotion use.
+export async function listRegistrations(sessionId: number): Promise<ListResult> {
+  const session = await prisma.trainingSession.findUnique({ where: { id: sessionId } })
+  if (!session) {
+    return { kind: 'session_not_found' }
+  }
+
+  const rows = await prisma.registration.findMany({
+    where: {
+      sessionId,
+      status: { in: [REGISTRATION_STATUS.confirmed, REGISTRATION_STATUS.waitlisted] },
+    },
+    orderBy: { id: 'asc' },
+    select: { id: true, name: true, email: true, status: true, createdAt: true },
+  })
+
+  const roster: RegistrationRoster = { confirmed: [], waitlisted: [] }
+  for (const row of rows) {
+    const item: RegistrationListItem = { ...row, status: row.status as RegistrationStatus }
+    if (item.status === REGISTRATION_STATUS.confirmed) {
+      roster.confirmed.push(item)
+    } else {
+      roster.waitlisted.push(item)
+    }
+  }
+  return { kind: 'found', roster }
+}

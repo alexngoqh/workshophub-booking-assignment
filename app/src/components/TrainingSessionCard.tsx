@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import type { RegistrationStatus, TrainingSession } from '../types'
 import { cancelRegistration, getRegistration, registerForSession } from '../api'
+import { Link } from '../router'
 import './TrainingSessionCard.css'
 
 // The browser's own registration id per session, so status survives a refresh (no auth).
@@ -169,7 +170,11 @@ function TrainingSessionCard({ session }: Props) {
         {isFull && <span className="session-badge session-badge--full">Full</span>}
       </div>
 
-      <h3 className="session-card__title">{session.title}</h3>
+      <h3 className="session-card__title">
+        <Link to={`/sessions/${session.id}`} className="session-card__title-link">
+          {session.title}
+        </Link>
+      </h3>
       <p className="session-card__description">{session.description}</p>
 
       <div className="session-card__meta">
