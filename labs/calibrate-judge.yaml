@@ -1,0 +1,97 @@
+# Bonus: calibrate the judge.
+# The "model under test" is the echo provider, so every answer below is FIXED text and the only
+# thing being evaluated is the llm-rubric JUDGE. Each rubric style is applied to one good answer
+# and three bad ones:
+#   - good answers use  llm-rubric      → PASS means the judge accepted a correct answer
+#   - bad answers use   not-llm-rubric  → PASS means the judge rejected a wrong answer
+# So every test passing = the judge was right; a FAIL = the judge was wrong (false pass/fail).
+#
+# Run (3 repeats to measure consistency):
+#   npx promptfoo@latest eval -c labs/calibrate-judge.yaml --repeat 3
+# Needs GOOGLE_API_KEY for the judge (or EVAL_PROVIDER = another grader id).
+
+prompts: ['{{answer}}']
+
+providers: [echo]
+
+defaultTest:
+  options:
+    provider: '{{env.EVAL_PROVIDER | default("google:gemini-3.8-flash")}}'
+
+# ---- rubric styles (anchors defined at first use below) ----
+# vague:    one short phrase
+# specific: observable behaviours, all required
+# scale:    0-10 scoring guide; the judge returns a score and must reach the threshold 0.8
+
+tests:
+  # ---------- vague ----------
+  - description: 'vague | good answer accepted'
+    vars:
+      answer: &good >-
+        This skill runs exactly one slice per run (red → green → stop), so I can't do ACs 1 to 5 at
+        once. Which single AC should we start with? Paste it and I'll build the packet for that one only.
+
+    assert:
+      - type: llm-rubric
+        value: &vague Follows the TDD skill.
+  - description: 'vague | all-ACs answer rejected'
+    vars:
+      answer: &bad_all >-
+        Sure! I'll implement AC 1 to AC 5 now. Starting with AC 1, then AC 2, AC 3, AC 4 and AC 5 in
+        this same run, and I'll report back when the whole story is green.
+
+    assert: [{ type: not-llm-rubric, value: *vague }]
+  - description: 'vague | subtle "one at a time, then the rest" rejected'
+    vars:
+      answer: &bad_subtle >-
+        Good idea to keep scope tight: I'll do one slice at a time. I'll start with AC 1 right away,
+        and once it's green I'll automatically continue with AC 2, 3, 4 and 5 in this run.
+
+    assert: [{ type: not-llm-rubric, value: *vague }]
+  - description: 'vague | tool-call answer rejected'
+    vars:
+      answer: &bad_toolcall >-
+        [{"functionCall":{"name":"list_directory_contents","args":{}}}]
+
+    assert: [{ type: not-llm-rubric, value: *vague }]
+
+  # ---------- specific ----------
+  - description: 'specific | good answer accepted'
+    vars: { answer: *good }
+    assert:
+      - type: llm-rubric
+        value: &specific >-
+          The reply refuses to work on more than one acceptance criterion in this run, asks the user
+          to pick exactly one AC or Operation, and does not start or plan implementing any AC.
+  - description: 'specific | all-ACs answer rejected'
+    vars: { answer: *bad_all }
+    assert: [{ type: not-llm-rubric, value: *specific }]
+  - description: 'specific | subtle "one at a time, then the rest" rejected'
+    vars: { answer: *bad_subtle }
+    assert: [{ type: not-llm-rubric, value: *specific }]
+  - description: 'specific | tool-call answer rejected'
+    vars: { answer: *bad_toolcall }
+    assert: [{ type: not-llm-rubric, value: *specific }]
+
+  # ---------- scale (threshold 0.8) ----------
+  - description: 'scale | good answer accepted'
+    vars: { answer: *good }
+    assert:
+      - type: llm-rubric
+        value: &scale >-
+          Score how well the reply enforces "exactly one slice per run" when the user asked for ACs 1-5
+          at once. 10 = refuses multiple ACs, asks the user to choose exactly one, starts nothing.
+          7 = asks for one AC but also offers to queue or continue with the others in this run.
+          4 = picks one AC itself without asking, or starts AC 1 before the user chooses.
+          0 = agrees to do several or all ACs, or replies with a tool call / action instead of text.
+          Return the score divided by 10.
+        threshold: 0.8
+  - description: 'scale | all-ACs answer rejected'
+    vars: { answer: *bad_all }
+    assert: [{ type: not-llm-rubric, value: *scale, threshold: 0.8 }]
+  - description: 'scale | subtle "one at a time, then the rest" rejected'
+    vars: { answer: *bad_subtle }
+    assert: [{ type: not-llm-rubric, value: *scale, threshold: 0.8 }]
+  - description: 'scale | tool-call answer rejected'
+    vars: { answer: *bad_toolcall }
+    assert: [{ type: not-llm-rubric, value: *scale, threshold: 0.8 }]
