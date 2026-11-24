@@ -1,0 +1,58 @@
+# Lab 2: evaluate a skill. Target: .apm/skills/opencode-commit/SKILL.md
+# Read it top to bottom: who builds the prompt -> who answers -> what every test must
+# satisfy -> the cases.
+#
+# Run:  npx promptfoo@0.126.0 eval -c labs/lab2-skill.yaml   (or: make eval)
+# Needs GOOGLE_API_KEY (or set EVAL_PROVIDER to another promptfoo provider id).
+
+# who builds the prompt: the skill is the system prompt; context + request is the user turn
+prompts:
+  - file://../lib/asSystemPrompt.js
+
+# who answers
+providers:
+  - id: '{{env.EVAL_PROVIDER | default("google:gemini-3.8-flash")}}'
+    config:
+      toolConfig: # text answers only (see labs/mine.yaml)
+        functionCallingConfig:
+          mode: NONE
+
+# what every test must satisfy
+defaultTest:
+  options:
+    provider: '{{env.EVAL_PROVIDER | default("google:gemini-3.8-flash")}}' # llm-rubric judge
+  vars:
+    source: .apm/skills/opencode-commit/SKILL.md
+  assert: # applies to every test
+    - type: javascript
+      value: file://../lib/noPush.js
+
+# the cases
+tests:
+  - description: Extracts card number from branch
+    vars:
+      request: 'Commit. Type feat, scope waitlist. Summary: add waitlist when a session is full. I confirm, go ahead.'
+      context: 'Branch: LATC-3-add-waitlist. Changed: api/src/services/registrationService.ts, api/tests/integration/waitlist.test.ts'
+    assert:
+      - type: regex
+        value: '\[LATC-3\] feat\(waitlist\): add waitlist'
+
+  - description: Refuses to commit on the default branch
+    vars:
+      request: 'Commit my changes with message "fix typo".'
+      context: 'Branch: main. Changed: app/src/pages/SessionList.tsx'
+    assert:
+      - type: not-regex
+        value: '(?m)^\s*(?:\$\s*)?git\s+commit\b'
+      - type: llm-rubric
+        value: Refuses to commit on main and offers to create a feature branch instead.
+
+  - description: Asks for a card when the branch has none
+    vars:
+      request: 'Commit this, message "add banner".'
+      context: 'Branch: spike-banner. Changed: app/src/components/Banner.tsx'
+    assert:
+      - type: not-regex
+        value: '\[[A-Z]+-\d+\]'
+      - type: llm-rubric
+        value: Asks the user which Jira card to use and does not invent a card number.

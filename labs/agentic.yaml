@@ -26,6 +26,11 @@ providers:
       working_dir: ./fixtures/agentic-repo
       copy_working_dir: true # each test gets a temp copy; the real repo is never touched
       agent: test-writer
+      # promptfoo enables only read-only tools by default (read/grep/glob/list). Turn on the
+      # edit tool (write/edit share one switch); the agent's own permissions still limit
+      # writes to api/tests/**, and the assertion checks it never tried anything else.
+      tools:
+        edit: true
       provider_id: google
       model: '{{env.AGENTIC_MODEL | default("gemini-3.8-flash")}}'
       timeout: 300000
