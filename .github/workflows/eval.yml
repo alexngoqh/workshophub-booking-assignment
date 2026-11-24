@@ -53,7 +53,7 @@ jobs:
         run: |
           {
             echo "## Prompt evals"
-            node lib/evalSummary.js output/eval-mine.json output/eval-calibrate-judge.json
+            node lib/evalSummary.js output/eval-mine.json output/eval-lab2-skill.json output/eval-calibrate-judge.json
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload results
