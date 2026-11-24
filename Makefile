@@ -2,7 +2,7 @@ SHELL := /bin/bash
 ROOT_DIR := $(shell pwd)
 API_DIR := $(ROOT_DIR)/api
 
-.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security reasons-lint branch-name-check eval prod-up prod-down prod-logs
+.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security reasons-lint branch-name-check eval eval-agentic prod-up prod-down prod-logs
 
 ## setup: Install dependencies, generate Prisma client, push schema, seed database
 setup:
@@ -88,3 +88,15 @@ eval:
 	$(PROMPTFOO) eval -c labs/calibrate-judge.yaml --no-progress-bar --repeat 3 --output output/eval-calibrate-judge.json || rc=1; \
 	node lib/evalSummary.js output/eval-mine.json output/eval-calibrate-judge.json; \
 	exit $$rc
+
+## eval-agentic: Run the agentic test-writer eval (slow; needs GOOGLE_API_KEY; not in CI)
+# OpenCode is pinned to the SDK's 1.x and gets its own data dirs under output/, so it never
+# touches (or trips over) the database of a globally installed OpenCode 2.x.
+OC_HOME = $(CURDIR)/output/opencode-home
+eval-agentic:
+	@mkdir -p "$(OC_HOME)"
+	GOOGLE_GENERATIVE_AI_API_KEY="$${GOOGLE_GENERATIVE_AI_API_KEY:-$$GOOGLE_API_KEY}" \
+	XDG_DATA_HOME="$(OC_HOME)/data" XDG_STATE_HOME="$(OC_HOME)/state" \
+	XDG_CACHE_HOME="$(OC_HOME)/cache" XDG_CONFIG_HOME="$(OC_HOME)/config" \
+	npx --yes -p promptfoo@0.126.0 -p @opencode-ai/sdk@1.19.6 -p opencode-ai@1.19.6 \
+		promptfoo eval -c labs/agentic.yaml --output output/eval-agentic.json

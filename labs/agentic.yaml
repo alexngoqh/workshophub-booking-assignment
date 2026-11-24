@@ -5,12 +5,11 @@
 #   - writes only under api/tests/
 #   - never reads api/src/
 #
-# Run (needs the OpenCode SDK next to promptfoo; OpenCode's Google provider reads its own key var):
-#   export GOOGLE_GENERATIVE_AI_API_KEY="$GOOGLE_API_KEY"
-#   npx -p promptfoo@0.126.0 -p @opencode-ai/sdk@1.19.6 -p opencode-ai@1.19.6 \
-#     promptfoo eval -c labs/agentic.yaml
-# Pin the opencode CLI to the SDK's version: the SDK waits for the line "opencode server
-# listening", which OpenCode 2.x no longer prints, so a 2.x binary hangs until the timeout.
+# Run:  make eval-agentic   (needs GOOGLE_API_KEY)
+# The target pins opencode-ai + @opencode-ai/sdk to 1.19.6 (a 2.x binary never prints the
+# "opencode server listening" line the 1.x SDK waits for) and gives OpenCode its own data dirs
+# under output/ (otherwise 1.x fails with "Database is not empty and has no session table" on
+# the database a global OpenCode 2.x created).
 # Not part of `make eval` / CI: it is slow, costs more, and needs the opencode binary.
 
 prompts:
