@@ -1,5 +1,5 @@
 ---
-name: tdd
+name: opencode-tdd
 description: 'Red-green loop for ONE WorkshopHub slice (one acceptance criterion or one Operation) per run. Delegates RED to the test-writer agent and GREEN to the implementer agent; this skill runs make test itself and pauses for the navigator to confirm RED. Use when the user says tdd, red-green, test-first, or wants to implement a single AC/Operation. Do not use it for a whole story at once.'
 ---
 

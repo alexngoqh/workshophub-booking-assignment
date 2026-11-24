@@ -1,0 +1,21 @@
+name: workshophub-booking-main
+version: 1.0.0
+description: APM project for workshophub-booking-main
+author: Alex Ngo
+# Which agent platforms to deploy to.
+# Resolution order: --target flag > this field > 'apm config set target'
+# > auto-detect from filesystem.
+# Accepted values: agent-skills, antigravity, claude, codex, copilot, cursor, gemini, grok-bot, grok-build, hermes, kiro, opencode, windsurf
+targets:
+  - claude
+  - opencode
+dependencies:
+  apm:
+    - path: ./.claude/skills/commit
+    - path: ./.claude/skills/mr
+    - path: ./.claude/skills/tdd
+    - path: ./.opencode/skills/opencode-commit
+    - path: ./.opencode/skills/opencode-tdd
+  mcp: []
+includes: auto
+scripts: {}

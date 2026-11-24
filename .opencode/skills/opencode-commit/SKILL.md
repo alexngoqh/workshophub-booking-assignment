@@ -1,5 +1,5 @@
 ---
-name: commit
+name: opencode-commit
 description: "Create a safe, well-formed git commit on a feature branch in the WorkshopHub repo. Use this whenever the user wants to commit, 'commit this', 'save my work', 'make a commit', or record their changes in git — even if they don't say the word 'commit'. It refuses on the main branch, shows git status and a short diff summary, drafts a commit message prefixed with the Jira card read from the branch name (e.g. [LATC-2], asking the user for one if the branch has none), stages only the relevant files, runs git commit after the user confirms, and stops without pushing. It never commits secrets and never bypasses git hooks with --no-verify. Do NOT use this skill to push, open a pull request, merge, rebase, or resolve merge conflicts."
 ---
 

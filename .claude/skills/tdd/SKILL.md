@@ -5,7 +5,7 @@ description: Red-green loop for ONE WorkshopHub slice (one acceptance criterion 
 
 # TDD: one slice, red → green → stop
 
-Claude Code port of `.opencode/skills/tdd/SKILL.md`. Same loop; agents are
+Claude Code port of `.opencode/skills/opencode-tdd/SKILL.md`. Same loop; agents are
 `.claude/agents/test-writer.md` and `.claude/agents/implementer.md`.
 
 You orchestrate. **You do not write tests or implementation yourself.** You
