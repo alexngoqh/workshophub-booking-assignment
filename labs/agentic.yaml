@@ -7,7 +7,10 @@
 #
 # Run (needs the OpenCode SDK next to promptfoo; OpenCode's Google provider reads its own key var):
 #   export GOOGLE_GENERATIVE_AI_API_KEY="$GOOGLE_API_KEY"
-#   npx -p promptfoo@0.126.0 -p @opencode-ai/sdk promptfoo eval -c labs/agentic.yaml
+#   npx -p promptfoo@0.126.0 -p @opencode-ai/sdk@1.19.6 -p opencode-ai@1.19.6 \
+#     promptfoo eval -c labs/agentic.yaml
+# Pin the opencode CLI to the SDK's version: the SDK waits for the line "opencode server
+# listening", which OpenCode 2.x no longer prints, so a 2.x binary hangs until the timeout.
 # Not part of `make eval` / CI: it is slow, costs more, and needs the opencode binary.
 
 prompts:
