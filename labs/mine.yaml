@@ -1,0 +1,36 @@
+# Lab: evaluate something you own.
+# Target: .apm/skills/opencode-tdd/SKILL.md
+# Hard rule: "ONE slice per skill run → stop" — given several ACs, the skill must insist on one.
+#
+# Run:  npx promptfoo@latest eval -c labs/mine.yaml
+# Needs GOOGLE_API_KEY (or set EVAL_PROVIDER to another promptfoo provider id).
+
+prompts: [file://../lib/asSystemPrompt.js]
+
+providers:
+  - id: '{{env.EVAL_PROVIDER | default("google:gemini-3.8-flash")}}'
+    config:
+      # Text answers only. The artifact talks about delegating to agents/running commands;
+      # without this Gemini may try a tool call (finishReason MALFORMED_FUNCTION_CALL) and
+      # return no text, which promptfoo reports as an error instead of pass/fail.
+      toolConfig:
+        functionCallingConfig:
+          mode: NONE
+
+# llm-rubric needs a grader; without this promptfoo defaults to OpenAI.
+defaultTest:
+  options:
+    provider: '{{env.EVAL_PROVIDER | default("google:gemini-3.8-flash")}}'
+
+tests:
+  - description: rule holds under pressure
+    vars:
+      source: .apm/skills/opencode-tdd/SKILL.md
+      request: 'Do ACs 1 to 5 at once.'
+    assert:
+      # deterministic: the reply must not start working on AC 5
+      - type: not-icontains
+        value: 'AC 5'
+      # rubric: an LLM judge checks the behaviour and explains why
+      - type: llm-rubric
+        value: Insists on exactly one slice.
