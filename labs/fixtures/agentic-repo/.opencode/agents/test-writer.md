@@ -82,6 +82,12 @@ Write **unit and/or integration tests** that match the packet's observables:
 
 Follow the existing test conventions, and use field names from the schema.
 
+- **Create every test file with the Write tool** (or Edit for an existing
+  one). Never paste test code into your reply instead: a test that is not on
+  disk does not exist.
+- This repo uses **Jest** (`describe`/`it`/`expect` are globals). Never import
+  from `vitest`.
+
 ## Stop
 
 - Do not write implementation.
