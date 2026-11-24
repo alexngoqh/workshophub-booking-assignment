@@ -2,7 +2,7 @@ SHELL := /bin/bash
 ROOT_DIR := $(shell pwd)
 API_DIR := $(ROOT_DIR)/api
 
-.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security reasons-lint branch-name-check prod-up prod-down prod-logs
+.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security reasons-lint branch-name-check eval prod-up prod-down prod-logs
 
 ## setup: Install dependencies, generate Prisma client, push schema, seed database
 setup:
@@ -78,3 +78,13 @@ reasons-lint:
 ## branch-name-check: Check the current branch follows latc-<story>-<slug>
 branch-name-check:
 	@bash scripts/branch-name-check.sh
+
+## eval: Run the promptfoo evals in labs/ (needs GOOGLE_API_KEY); results in output/
+PROMPTFOO ?= npx --yes promptfoo@0.126.0
+eval:
+	@mkdir -p output
+	@rc=0; \
+	$(PROMPTFOO) eval -c labs/mine.yaml --no-progress-bar --output output/eval-mine.json || rc=1; \
+	$(PROMPTFOO) eval -c labs/calibrate-judge.yaml --no-progress-bar --repeat 3 --output output/eval-calibrate-judge.json || rc=1; \
+	node lib/evalSummary.js output/eval-mine.json output/eval-calibrate-judge.json; \
+	exit $$rc

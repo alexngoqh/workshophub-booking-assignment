@@ -7,15 +7,9 @@ author: Alex Ngo
 # > auto-detect from filesystem.
 # Accepted values: agent-skills, antigravity, claude, codex, copilot, cursor, gemini, grok-bot, grok-build, hermes, kiro, opencode, windsurf
 targets:
-  - claude
-  - opencode
+- opencode
 dependencies:
-  apm:
-    - path: ./.claude/skills/commit
-    - path: ./.claude/skills/mr
-    - path: ./.claude/skills/tdd
-    - path: ./.opencode/skills/opencode-commit
-    - path: ./.opencode/skills/opencode-tdd
+  apm: []
   mcp: []
 includes: auto
 scripts: {}

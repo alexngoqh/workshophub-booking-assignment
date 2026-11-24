@@ -61,3 +61,10 @@ openspec/
 
 # Local verification scripts
 verify/
+
+
+# APM dependencies
+apm_modules/
+
+# promptfoo eval results (make eval)
+output/

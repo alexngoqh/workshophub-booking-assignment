@@ -1,0 +1,69 @@
+name: Prompt Evals
+
+# Runs the promptfoo evals when the agent harness or the evals themselves change.
+# WARN-ONLY: results go to the job summary and a warning annotation; the check stays green.
+# LLM output is non-deterministic and the judge calls an external API, so a red eval should
+# start a conversation, not block a merge. To make it blocking, delete `continue-on-error`
+# on the "Run evals" step and the final "Warn" step.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.apm/**'
+      - 'labs/**'
+      - 'lib/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      PROMPTFOO_DISABLE_TELEMETRY: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Check for API key
+        id: key
+        run: |
+          if [ -z "$GOOGLE_API_KEY" ]; then
+            echo "::notice::GOOGLE_API_KEY secret not set (or PR from a fork); skipping evals."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run evals
+        id: eval
+        if: steps.key.outputs.skip != 'true'
+        continue-on-error: true
+        run: make eval
+
+      - name: Job summary
+        if: steps.key.outputs.skip != 'true' && always()
+        run: |
+          {
+            echo "## Prompt evals"
+            node lib/evalSummary.js output/eval-mine.json output/eval-calibrate-judge.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: steps.key.outputs.skip != 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prompt-eval-results
+          path: output/
+          if-no-files-found: ignore
+
+      - name: Warn on failing evals
+        if: steps.eval.outcome == 'failure'
+        run: echo "::warning title=Prompt evals::Some evals failed; see the job summary. This check is warn-only."
