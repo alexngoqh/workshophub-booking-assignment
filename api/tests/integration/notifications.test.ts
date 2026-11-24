@@ -85,6 +85,67 @@ describe('Registration notifications (LATC-8)', () => {
     expect(sent).toEqual([])
   })
 
+  it('emits exactly one confirmed event with normalised email and a Date sessionDate', async () => {
+    const s = await session()
+    const res = await api().post(url(s.id)).send({ name: 'Grace', email: '  Grace@Example.COM ' })
+    await flushNotifications()
+
+    expect(res.status).toBe(201)
+    expect(res.body.status).toBe('confirmed')
+    expect(sent).toHaveLength(1)
+    expect(sent[0].status).toBe('confirmed')
+    expect(sent[0].name).toBe('Grace')
+    expect(sent[0].email).toBe('grace@example.com')
+    expect(sent[0].sessionTitle).toBe(s.title)
+    expect(sent[0].sessionDate).toBeInstanceOf(Date)
+    expect(sent[0].sessionDate.getTime()).toBe(s.date.getTime())
+  })
+
+  it('responds 201 without waiting for a transport that never resolves', async () => {
+    let release: () => void = () => {}
+    const pending = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const calls: RegistrationNotification[] = []
+    setTransportsForTesting([
+      (e) => {
+        calls.push(e)
+        return pending
+      },
+    ])
+    const s = await session()
+
+    try {
+      const started = Date.now()
+      const res = await api().post(url(s.id)).send({ name: 'Ada', email: 'ada@example.com' })
+
+      expect(res.status).toBe(201)
+      expect(res.body.status).toBe('confirmed')
+      expect(Date.now() - started).toBeLessThan(2000)
+    } finally {
+      release()
+      await flushNotifications()
+    }
+    expect(calls).toHaveLength(1)
+  })
+
+  it('does not notify on a 400 validation error', async () => {
+    const s = await session()
+    const res = await api().post(url(s.id)).send({ name: '', email: 'not-an-email' })
+    await flushNotifications()
+
+    expect(res.status).toBe(400)
+    expect(sent).toEqual([])
+  })
+
+  it('does not notify on a 404 unknown session', async () => {
+    const res = await api().post(url(999999999)).send({ name: 'Ada', email: 'ada@example.com' })
+    await flushNotifications()
+
+    expect(res.status).toBe(404)
+    expect(sent).toEqual([])
+  })
+
   it('a failing transport does not affect the registration', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => {})
     setTransportsForTesting([
