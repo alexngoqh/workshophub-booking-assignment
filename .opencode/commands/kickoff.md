@@ -1,5 +1,10 @@
 ---
-description: "Kick off a Jira card for development: read it with getJiraIssue, then either copy it to a new card titled 'Alex Ngo: <original title>' and move the copy into In Development, or — if it is already in In Development — leave an attempt comment on the original via addCommentToJiraIssue. Save kickoff metadata to ./stories, then create and checkout a latc-{id}-{desc} branch after confirming its name, and stop. Never mutates the original card and never pushes."
+description: 'Kick off a Jira card for development: read it with getJiraIssue, then
+  either copy it to a new card titled ''Alex Ngo: <original title>'' and move the
+  copy into In Development, or — if it is already in In Development — leave an attempt
+  comment on the original via addCommentToJiraIssue. Save kickoff metadata to ./stories,
+  then create and checkout a latc-{id}-{desc} branch after confirming its name, and
+  stop. Never mutates the original card and never pushes.'
 ---
 
 // allowed-tools
