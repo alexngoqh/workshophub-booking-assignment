@@ -85,6 +85,7 @@ eval:
 	@mkdir -p output
 	@rc=0; \
 	$(PROMPTFOO) eval -c labs/mine.yaml --no-progress-bar --output output/eval-mine.json || rc=1; \
+	$(PROMPTFOO) eval -c labs/lab2-skill.yaml --no-progress-bar --output output/eval-lab2-skill.json || rc=1; \
 	$(PROMPTFOO) eval -c labs/calibrate-judge.yaml --no-progress-bar --repeat 3 --output output/eval-calibrate-judge.json || rc=1; \
-	node lib/evalSummary.js output/eval-mine.json output/eval-calibrate-judge.json; \
+	node lib/evalSummary.js output/eval-mine.json output/eval-lab2-skill.json output/eval-calibrate-judge.json; \
 	exit $$rc
