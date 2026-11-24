@@ -57,7 +57,7 @@ deployments:
   owners:
   - .
   active_owner: .
-  content_hash: sha256:8e0d0d651495a60329503c1158ac92a41353a9f855b63f7be115ad6c4a40a0dc
+  content_hash: sha256:6ac5c66ab6b8fc3f0b44a272a33b3a99638fcbe29b023037a2b5ecfa4086cf7e
 - kind: project-relative
   target: opencode
   value: .opencode/commands/kickoff.md
@@ -79,5 +79,5 @@ local_deployed_file_hashes:
   .agents/skills/opencode-commit/SKILL.md: sha256:281b27080c1ec944fcc3e51e3944bf46aedd81efa2be0b830c11c7ae57dd3eb9
   .agents/skills/opencode-tdd/SKILL.md: sha256:f20f56b3df0b5230df457361ba90c21957417464e78e12b906eb4be80868f0d7
   .opencode/agents/implementer.md: sha256:608309a9167168688916a0edbc8c61d770b9287a0123e76ae8516b8192accc85
-  .opencode/agents/test-writer.md: sha256:8e0d0d651495a60329503c1158ac92a41353a9f855b63f7be115ad6c4a40a0dc
+  .opencode/agents/test-writer.md: sha256:6ac5c66ab6b8fc3f0b44a272a33b3a99638fcbe29b023037a2b5ecfa4086cf7e
   .opencode/commands/kickoff.md: sha256:ff9c68e17fa775bc13f01afd3357b10db73e81b22d094fa4d7ae81c7e9cd86a1
