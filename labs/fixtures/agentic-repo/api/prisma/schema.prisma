@@ -1,0 +1,65 @@
+// This is the Prisma schema for WorkshopHub
+// Run `pnpm exec prisma db push` to apply changes
+// Run `pnpm exec prisma db seed` to populate with sample data
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model TrainingSession {
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String
+  date         DateTime
+  capacity     Int
+  registered   Int      @default(0)
+  location     String
+  deliveryMode String
+  status       String   @default("active")
+  // Registration closes after this instant (UTC); null = no deadline
+  registrationDeadline DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  registrations Registration[]
+
+  @@map("training_sessions")
+}
+
+model Registration {
+  id        Int             @id @default(autoincrement())
+  sessionId Int
+  session   TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name      String
+  email     String
+  // confirmed | waitlisted | cancelled
+  status    String          @default("confirmed")
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@index([sessionId, email])
+  @@index([sessionId, status])
+  @@map("registrations")
+}
+
+// Immutable history of registration status transitions (LATC-9)
+model AuditLog {
+  id             Int          @id @default(autoincrement())
+  registrationId Int
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  fromStatus     String?
+  toStatus       String
+  changedAt      DateTime     @default(now())
+  reason         String?
+
+  @@index([registrationId])
+  @@map("audit_logs")
+}
