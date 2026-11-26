@@ -2,7 +2,7 @@ SHELL := /bin/bash
 ROOT_DIR := $(shell pwd)
 API_DIR := $(ROOT_DIR)/api
 
-.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security reasons-lint branch-name-check eval eval-agentic prod-up prod-down prod-logs
+.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security reasons-lint branch-name-check no-prisma-in-routes safeguards-quality agent-boundary apm-audit sensors eval eval-agentic prod-up prod-down prod-logs
 
 ## setup: Install dependencies, generate Prisma client, push schema, seed database
 setup:
@@ -75,19 +75,39 @@ help:
 reasons-lint:
 	@bash scripts/reasons-lint.sh
 
+## no-prisma-in-routes: Fail if a route handler accesses Prisma directly (exemptions in scripts/no-prisma-in-routes.allow)
+no-prisma-in-routes:
+	@bash scripts/no-prisma-in-routes.sh
+
+## safeguards-quality: New/changed REASONS canvases have concrete Safeguards (>=2 items, LATC ref, untrusted-context)
+safeguards-quality:
+	@bash scripts/safeguards-quality.sh
+
+## agent-boundary: AGENT.md still declares AGENT_BOUNDARY and the untrusted-context rule
+agent-boundary:
+	@bash scripts/agent-boundary-check.sh
+
+## apm-audit: Agent config deployed from .apm/ has not drifted (apm audit --ci)
+apm-audit:
+	@bash scripts/apm-audit.sh
+
+## sensors: Run every harness sensor (same set as pre-push and CI)
+sensors: branch-name-check reasons-lint safeguards-quality no-prisma-in-routes agent-boundary apm-audit
+
 ## branch-name-check: Check the current branch follows latc-<story>-<slug>
 branch-name-check:
 	@bash scripts/branch-name-check.sh
 
-## eval: Run the promptfoo evals in labs/ (needs GOOGLE_API_KEY); results in output/
+## eval: Run the promptfoo evals in labs/ on Claude via the local claude CLI (no API key); results in output/
 PROMPTFOO ?= npx --yes promptfoo@0.126.0
 eval:
 	@mkdir -p output
 	@rc=0; \
 	$(PROMPTFOO) eval -c labs/mine.yaml --no-progress-bar --output output/eval-mine.json || rc=1; \
 	$(PROMPTFOO) eval -c labs/lab2-skill.yaml --no-progress-bar --output output/eval-lab2-skill.json || rc=1; \
+	$(PROMPTFOO) eval -c labs/harness.yaml --no-progress-bar --output output/eval-harness.json || rc=1; \
 	$(PROMPTFOO) eval -c labs/calibrate-judge.yaml --no-progress-bar --repeat 3 --output output/eval-calibrate-judge.json || rc=1; \
-	node lib/evalSummary.js output/eval-mine.json output/eval-lab2-skill.json output/eval-calibrate-judge.json; \
+	node lib/evalSummary.js output/eval-mine.json output/eval-lab2-skill.json output/eval-harness.json output/eval-calibrate-judge.json; \
 	exit $$rc
 
 ## eval-agentic: Run the agentic test-writer eval (slow; needs GOOGLE_API_KEY; not in CI)

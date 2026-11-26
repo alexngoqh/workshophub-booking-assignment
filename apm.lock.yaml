@@ -1,9 +1,199 @@
 lockfile_version: '4'
 apm_version: 0.37.0
 manifest_targets:
+- claude
 - opencode
 dependencies: []
 deployments:
+- kind: project-relative
+  target: claude
+  value: .claude/commands/finish-dev.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:4edaea25d592b4d073953de80d170bc8bf921be172de0e1e06ee5ed76b006df7
+- kind: project-relative
+  target: claude
+  value: .claude/commands/sensor-and-fix.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:4b2b38f7b2f900dcdaffccd3743766a5c5b46475bc07d2cba62544638c1eda79
+- kind: project-relative
+  target: claude
+  value: .claude/commands/spdd-analysis.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:b4fa138f71ce01dc5a045ac8cb1121ec7dd2d83897b772a0abd2c764dc77aad8
+- kind: project-relative
+  target: claude
+  value: .claude/commands/spdd-generate.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:13b7583bb858e5c80159fd47975747b8b4258ffb80f86da820d2c138bcff0bc5
+- kind: project-relative
+  target: claude
+  value: .claude/commands/spdd-prompt-update.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:3ca00ddabee8244cc831bdf6f01cf672537dbd7009cfcda2fd46a15d09e73040
+- kind: project-relative
+  target: claude
+  value: .claude/commands/spdd-reasons-canvas.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:4351e3062e8ef1805f304053fd44ef2e90aecaf217d9d82ddf4f315514c85df9
+- kind: project-relative
+  target: claude
+  value: .claude/commands/spdd-sync.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:2b1ab182b215244f263cb8eca9251225230287eb3ad0a5b1a525fc745bd85081
+- kind: project-relative
+  target: claude
+  value: .claude/skills/commit
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/commit/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:4bbba7839e655105e9a1936e6bdbe1955d239ae9f42b6de53e2854719eb8c435
+- kind: project-relative
+  target: claude
+  value: .claude/skills/mr
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/mr/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:b7f43b50c80e9d8a208912985a3c8eb98eeb64e9f6f2a548eee8dd3227dafa7b
+- kind: project-relative
+  target: claude
+  value: .claude/skills/opencode-commit
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/opencode-commit/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:281b27080c1ec944fcc3e51e3944bf46aedd81efa2be0b830c11c7ae57dd3eb9
+- kind: project-relative
+  target: claude
+  value: .claude/skills/opencode-tdd
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/opencode-tdd/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:f20f56b3df0b5230df457361ba90c21957417464e78e12b906eb4be80868f0d7
+- kind: project-relative
+  target: claude
+  value: .claude/skills/tdd
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: claude
+  value: .claude/skills/tdd/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:ad118acc9d2028c1d8c8a4493ecf7c80a58140342b76dd2731d6b8c65e552ecc
+- kind: project-relative
+  target: opencode
+  value: .agents/skills/commit
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: opencode
+  value: .agents/skills/commit/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:4bbba7839e655105e9a1936e6bdbe1955d239ae9f42b6de53e2854719eb8c435
+- kind: project-relative
+  target: opencode
+  value: .agents/skills/mr
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: opencode
+  value: .agents/skills/mr/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:b7f43b50c80e9d8a208912985a3c8eb98eeb64e9f6f2a548eee8dd3227dafa7b
 - kind: project-relative
   target: opencode
   value: .agents/skills/opencode-commit
@@ -42,6 +232,24 @@ deployments:
   content_hash: sha256:f20f56b3df0b5230df457361ba90c21957417464e78e12b906eb4be80868f0d7
 - kind: project-relative
   target: opencode
+  value: .agents/skills/tdd
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: null
+- kind: project-relative
+  target: opencode
+  value: .agents/skills/tdd/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:ad118acc9d2028c1d8c8a4493ecf7c80a58140342b76dd2731d6b8c65e552ecc
+- kind: project-relative
+  target: opencode
   value: .opencode/agents/implementer.md
   runtime: null
   scope: project
@@ -60,6 +268,15 @@ deployments:
   content_hash: sha256:6ac5c66ab6b8fc3f0b44a272a33b3a99638fcbe29b023037a2b5ecfa4086cf7e
 - kind: project-relative
   target: opencode
+  value: .opencode/commands/finish-dev.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:4edaea25d592b4d073953de80d170bc8bf921be172de0e1e06ee5ed76b006df7
+- kind: project-relative
+  target: opencode
   value: .opencode/commands/kickoff.md
   runtime: null
   scope: project
@@ -67,17 +284,123 @@ deployments:
   - .
   active_owner: .
   content_hash: sha256:ff9c68e17fa775bc13f01afd3357b10db73e81b22d094fa4d7ae81c7e9cd86a1
+- kind: project-relative
+  target: opencode
+  value: .opencode/commands/sensor-and-fix.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:4b2b38f7b2f900dcdaffccd3743766a5c5b46475bc07d2cba62544638c1eda79
+- kind: project-relative
+  target: opencode
+  value: .opencode/commands/spdd-analysis.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:b4fa138f71ce01dc5a045ac8cb1121ec7dd2d83897b772a0abd2c764dc77aad8
+- kind: project-relative
+  target: opencode
+  value: .opencode/commands/spdd-generate.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:13b7583bb858e5c80159fd47975747b8b4258ffb80f86da820d2c138bcff0bc5
+- kind: project-relative
+  target: opencode
+  value: .opencode/commands/spdd-prompt-update.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:3ca00ddabee8244cc831bdf6f01cf672537dbd7009cfcda2fd46a15d09e73040
+- kind: project-relative
+  target: opencode
+  value: .opencode/commands/spdd-reasons-canvas.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:4351e3062e8ef1805f304053fd44ef2e90aecaf217d9d82ddf4f315514c85df9
+- kind: project-relative
+  target: opencode
+  value: .opencode/commands/spdd-sync.md
+  runtime: null
+  scope: project
+  owners:
+  - .
+  active_owner: .
+  content_hash: sha256:2b1ab182b215244f263cb8eca9251225230287eb3ad0a5b1a525fc745bd85081
 local_deployed_files:
+- .agents/skills/commit
+- .agents/skills/commit/SKILL.md
+- .agents/skills/mr
+- .agents/skills/mr/SKILL.md
 - .agents/skills/opencode-commit
 - .agents/skills/opencode-commit/SKILL.md
 - .agents/skills/opencode-tdd
 - .agents/skills/opencode-tdd/SKILL.md
+- .agents/skills/tdd
+- .agents/skills/tdd/SKILL.md
+- .claude/commands/finish-dev.md
+- .claude/commands/sensor-and-fix.md
+- .claude/commands/spdd-analysis.md
+- .claude/commands/spdd-generate.md
+- .claude/commands/spdd-prompt-update.md
+- .claude/commands/spdd-reasons-canvas.md
+- .claude/commands/spdd-sync.md
+- .claude/skills/commit
+- .claude/skills/commit/SKILL.md
+- .claude/skills/mr
+- .claude/skills/mr/SKILL.md
+- .claude/skills/opencode-commit
+- .claude/skills/opencode-commit/SKILL.md
+- .claude/skills/opencode-tdd
+- .claude/skills/opencode-tdd/SKILL.md
+- .claude/skills/tdd
+- .claude/skills/tdd/SKILL.md
 - .opencode/agents/implementer.md
 - .opencode/agents/test-writer.md
+- .opencode/commands/finish-dev.md
 - .opencode/commands/kickoff.md
+- .opencode/commands/sensor-and-fix.md
+- .opencode/commands/spdd-analysis.md
+- .opencode/commands/spdd-generate.md
+- .opencode/commands/spdd-prompt-update.md
+- .opencode/commands/spdd-reasons-canvas.md
+- .opencode/commands/spdd-sync.md
 local_deployed_file_hashes:
+  .agents/skills/commit/SKILL.md: sha256:4bbba7839e655105e9a1936e6bdbe1955d239ae9f42b6de53e2854719eb8c435
+  .agents/skills/mr/SKILL.md: sha256:b7f43b50c80e9d8a208912985a3c8eb98eeb64e9f6f2a548eee8dd3227dafa7b
   .agents/skills/opencode-commit/SKILL.md: sha256:281b27080c1ec944fcc3e51e3944bf46aedd81efa2be0b830c11c7ae57dd3eb9
   .agents/skills/opencode-tdd/SKILL.md: sha256:f20f56b3df0b5230df457361ba90c21957417464e78e12b906eb4be80868f0d7
+  .agents/skills/tdd/SKILL.md: sha256:ad118acc9d2028c1d8c8a4493ecf7c80a58140342b76dd2731d6b8c65e552ecc
+  .claude/commands/finish-dev.md: sha256:4edaea25d592b4d073953de80d170bc8bf921be172de0e1e06ee5ed76b006df7
+  .claude/commands/sensor-and-fix.md: sha256:4b2b38f7b2f900dcdaffccd3743766a5c5b46475bc07d2cba62544638c1eda79
+  .claude/commands/spdd-analysis.md: sha256:b4fa138f71ce01dc5a045ac8cb1121ec7dd2d83897b772a0abd2c764dc77aad8
+  .claude/commands/spdd-generate.md: sha256:13b7583bb858e5c80159fd47975747b8b4258ffb80f86da820d2c138bcff0bc5
+  .claude/commands/spdd-prompt-update.md: sha256:3ca00ddabee8244cc831bdf6f01cf672537dbd7009cfcda2fd46a15d09e73040
+  .claude/commands/spdd-reasons-canvas.md: sha256:4351e3062e8ef1805f304053fd44ef2e90aecaf217d9d82ddf4f315514c85df9
+  .claude/commands/spdd-sync.md: sha256:2b1ab182b215244f263cb8eca9251225230287eb3ad0a5b1a525fc745bd85081
+  .claude/skills/commit/SKILL.md: sha256:4bbba7839e655105e9a1936e6bdbe1955d239ae9f42b6de53e2854719eb8c435
+  .claude/skills/mr/SKILL.md: sha256:b7f43b50c80e9d8a208912985a3c8eb98eeb64e9f6f2a548eee8dd3227dafa7b
+  .claude/skills/opencode-commit/SKILL.md: sha256:281b27080c1ec944fcc3e51e3944bf46aedd81efa2be0b830c11c7ae57dd3eb9
+  .claude/skills/opencode-tdd/SKILL.md: sha256:f20f56b3df0b5230df457361ba90c21957417464e78e12b906eb4be80868f0d7
+  .claude/skills/tdd/SKILL.md: sha256:ad118acc9d2028c1d8c8a4493ecf7c80a58140342b76dd2731d6b8c65e552ecc
   .opencode/agents/implementer.md: sha256:608309a9167168688916a0edbc8c61d770b9287a0123e76ae8516b8192accc85
   .opencode/agents/test-writer.md: sha256:6ac5c66ab6b8fc3f0b44a272a33b3a99638fcbe29b023037a2b5ecfa4086cf7e
+  .opencode/commands/finish-dev.md: sha256:4edaea25d592b4d073953de80d170bc8bf921be172de0e1e06ee5ed76b006df7
   .opencode/commands/kickoff.md: sha256:ff9c68e17fa775bc13f01afd3357b10db73e81b22d094fa4d7ae81c7e9cd86a1
+  .opencode/commands/sensor-and-fix.md: sha256:4b2b38f7b2f900dcdaffccd3743766a5c5b46475bc07d2cba62544638c1eda79
+  .opencode/commands/spdd-analysis.md: sha256:b4fa138f71ce01dc5a045ac8cb1121ec7dd2d83897b772a0abd2c764dc77aad8
+  .opencode/commands/spdd-generate.md: sha256:13b7583bb858e5c80159fd47975747b8b4258ffb80f86da820d2c138bcff0bc5
+  .opencode/commands/spdd-prompt-update.md: sha256:3ca00ddabee8244cc831bdf6f01cf672537dbd7009cfcda2fd46a15d09e73040
+  .opencode/commands/spdd-reasons-canvas.md: sha256:4351e3062e8ef1805f304053fd44ef2e90aecaf217d9d82ddf4f315514c85df9
+  .opencode/commands/spdd-sync.md: sha256:2b1ab182b215244f263cb8eca9251225230287eb3ad0a5b1a525fc745bd85081

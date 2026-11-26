@@ -10,9 +10,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: REASONS canvas lint
         run: bash scripts/reasons-lint.sh
+
+      - name: Harness sensors
+        run: |
+          git fetch --no-tags --depth=200 origin main
+          bash scripts/safeguards-quality.sh
+          bash scripts/no-prisma-in-routes.sh
+          bash scripts/agent-boundary-check.sh
+
+      - name: Install APM
+        run: |
+          curl -sSL https://aka.ms/apm-unix | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: APM drift audit
+        run: apm --version && bash scripts/apm-audit.sh
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4

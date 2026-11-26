@@ -27,6 +27,12 @@ done
 echo "▶ pre-push: REASONS structure"
 bash scripts/reasons-lint.sh || fail "reasons-lint"
 
+echo "▶ pre-push: safeguards quality"; bash scripts/safeguards-quality.sh  || fail "safeguards-quality"
+echo "▶ pre-push: no Prisma in routes"; bash scripts/no-prisma-in-routes.sh || fail "no-prisma-in-routes"
+echo "▶ pre-push: agent boundary";     bash scripts/agent-boundary-check.sh || fail "agent-boundary"
+
+echo "▶ pre-push: apm audit";        bash scripts/apm-audit.sh           || fail "apm-audit"
+
 echo "▶ pre-push: format-check";  make -s format-check || fail "format-check"
 echo "▶ pre-push: lint";          make -s lint         || fail "lint"
 echo "▶ pre-push: test";          make -s test         || fail "test"

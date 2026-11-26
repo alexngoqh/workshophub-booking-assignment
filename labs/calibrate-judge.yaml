@@ -8,7 +8,7 @@
 #
 # Run (3 repeats to measure consistency):
 #   npx promptfoo@latest eval -c labs/calibrate-judge.yaml --repeat 3
-# Needs GOOGLE_API_KEY for the judge (or EVAL_PROVIDER = another grader id).
+# The judge runs on Claude through the local `claude` CLI login (lib/claudeCliProvider.js).
 
 prompts: ['{{answer}}']
 
@@ -16,7 +16,7 @@ providers: [echo]
 
 defaultTest:
   options:
-    provider: '{{env.EVAL_PROVIDER | default("google:gemini-3.8-flash")}}'
+    provider: '{{env.EVAL_PROVIDER | default("file://../lib/claudeCliProvider.js")}}'
 
 # ---- rubric styles (anchors defined at first use below) ----
 # vague:    one short phrase

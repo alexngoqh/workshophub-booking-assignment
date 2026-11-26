@@ -24,6 +24,10 @@ mr-check:
     - npm install -g pnpm@9 --quiet
   script:
     - bash scripts/reasons-lint.sh
+    - apt-get update -qq && apt-get install -y -qq git >/dev/null
+    - git fetch --no-tags origin main && SAFEGUARDS_BASE=origin/main bash scripts/safeguards-quality.sh
+    - bash scripts/no-prisma-in-routes.sh
+    - bash scripts/agent-boundary-check.sh
     - pnpm install --frozen-lockfile
     - (cd api && pnpm exec prisma generate)
     - (cd api && pnpm exec prisma db push)
