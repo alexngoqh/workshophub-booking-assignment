@@ -23,6 +23,11 @@ export async function getAllSessions() {
   return sessions.map(flatten)
 }
 
+// Raw rows for the admin listing; intentionally no `withWaitlistCount` include.
+export async function getAllSessionsForAdmin() {
+  return prisma.trainingSession.findMany({ orderBy: { date: 'asc' } })
+}
+
 export async function getSessionById(id: number) {
   const session = await prisma.trainingSession.findUnique({
     where: { id },
