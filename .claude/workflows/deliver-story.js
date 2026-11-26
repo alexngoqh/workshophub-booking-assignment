@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Deliver one WorkshopHub story end-to-end (ultracode): kickoff, SPDD with adversarial gates, sensors with independent re-check, sync and finish-dev',
   whenToUse:
-    'Run with args { storyId: "LATC-N" } (optional: replica: true, base: "<branch>", verify: false for the lean 7-agent path, maxRevisions: 0-3, default 2). Takes one Jira story from kickoff to an open PR with the card In Review. Every main step is checked by independent read-only reviewers; the run stops at the first step that needs a human decision.',
+    'Run with args { storyId: "LATC-N" } (optional: replica: true, skipGenerate: true, tdd: false for batch /spdd-generate, base: "<branch>", verify: false for the lean 7-agent path, maxRevisions: 0-3, default 2). Takes one Jira story from kickoff to an open PR with the card In Review. Every main step is checked by independent read-only reviewers; the run stops at the first step that needs a human decision.',
   phases: [
     {
       title: 'kickoff',
@@ -12,7 +12,7 @@ export const meta = {
     {
       title: 'spdd',
       detail:
-        '/spdd-analysis → 2 skeptics → /spdd-reasons-canvas → 2 skeptics → /spdd-generate → 3-lens code review (each gate: revise up to maxRevisions)',
+        '/spdd-analysis → 2 skeptics → /spdd-reasons-canvas → 2 skeptics → per Operation: test-writer RED → RED verify → implementer GREEN → GREEN verify → adversarial (Strategy A) → 3-lens code review',
     },
     {
       title: 'sensor',
@@ -46,6 +46,8 @@ const VERIFY = input.verify !== false
 // skipGenerate: the story is already implemented on the base branch (evidence in code + tests).
 // Run the full rail but replace /spdd-generate with "commit the SPDD artefacts only".
 const SKIP_GENERATE = input.skipGenerate === true
+// tdd (default true): Strategy A multi-agent TDD per Operation. tdd: false → batch /spdd-generate (non-TDD).
+const TDD = input.tdd !== false
 const MAX_REVISIONS = Number.isInteger(input.maxRevisions)
   ? Math.max(0, Math.min(input.maxRevisions, 3))
   : 2
@@ -300,6 +302,202 @@ const CODE_LENSES = [
   },
 ]
 
+// ======================================================================================
+// Multi-agent TDD — Strategy A (Day 4-02 homework): one Operation per red→green cycle,
+// the loop lives here in the workflow. tdd never calls /spdd-generate.
+//   test-writer (no api/src, no Approach) → independent RED verifier (replaces the
+//   navigator's RED confirm) → commit tests → implementer (full canvas) → GREEN verifier
+//   (make test green + tests untouched) → commit → post-green adversarial challenge.
+// ======================================================================================
+const OPS = {
+  type: 'object',
+  properties: {
+    operations: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'e.g. "Operation 1" or "O1"' },
+          title: { type: 'string' },
+          text: {
+            type: 'string',
+            description: 'The Operation text copied verbatim from the canvas',
+          },
+          testable: {
+            type: 'boolean',
+            description:
+              'false only for pure schema/seed/config Operations with no observable behaviour of their own',
+          },
+        },
+        required: ['id', 'title', 'text', 'testable'],
+      },
+    },
+    redPacket: {
+      type: 'string',
+      description:
+        'Requirements, Entities, Norms and Safeguards sections copied verbatim (NO Approach, NO Structure, NO code)',
+    },
+  },
+  required: ['operations', 'redPacket'],
+}
+
+const TDD_CHECK = {
+  type: 'object',
+  properties: {
+    ok: { type: 'boolean', description: 'true only if the gate condition holds' },
+    failingTests: { type: 'array', items: { type: 'string' } },
+    output: { type: 'string', description: 'Key expected-vs-received lines or errors' },
+    detail: { type: 'string', description: 'Why the gate failed, with a concrete fix' },
+  },
+  required: ['ok', 'detail'],
+}
+
+const ADVERSARIAL = {
+  type: 'object',
+  properties: {
+    verdict: { type: 'string', enum: ['real-gap', 'out-of-scope', 'nothing-found'] },
+    testFile: { type: 'string' },
+    detail: { type: 'string' },
+  },
+  required: ['verdict', 'detail'],
+}
+
+async function tddOperation(op, packet, idx, total) {
+  const tag = 'tdd ' + (idx + 1) + '/' + total + ' ' + op.id
+  const OP_PACKET = 'Operation (ONE slice only):\n' + op.text + '\n\nCanvas sections:\n' + packet
+  let redCheck = null
+  let feedback = ''
+  for (let round = 0; round <= MAX_REVISIONS; round++) {
+    // RED — isolated test-writer: no api/src, no Approach.
+    await agent(
+      'Write failing tests for exactly this ONE Operation of ' +
+        storyId +
+        ' (canvas ' +
+        ctx.canvasPath +
+        ' — read only its Requirements/Entities/Norms/Safeguards, never Approach/Structure, never api/src). ' +
+        'Unit tests under api/tests/unit and integration tests under api/tests/integration when the Operation has HTTP/DB observables. ' +
+        'Do not run tests. Do not write tests for other Operations.\n\n' +
+        OP_PACKET +
+        (feedback ? '\n\nThe RED verifier rejected the previous attempt:\n' + feedback : ''),
+      { label: tag + ' RED test-writer', phase: 'spdd', agentType: 'test-writer' }
+    )
+    redCheck = await agent(
+      TESTER_RULES +
+        '\n\nRED gate for ' +
+        tag +
+        '. (1) `git status --short`: every changed/new file must be under api/tests/ — if not, ok=false and list them. ' +
+        '(2) Run `make test`. ok=true only if at least one NEW test fails, and every new failure is for the RIGHT reason ' +
+        '(missing behaviour, wrong status/body) — not a syntax, import, type or setup error, and no previously-green test broke. ' +
+        'Put the failing test names in failingTests and expected-vs-received lines in output.\n\nOperation:\n' +
+        op.text,
+      { label: tag + ' RED verify', phase: 'spdd', schema: TDD_CHECK }
+    )
+    if (redCheck && redCheck.ok) break
+    feedback = redCheck
+      ? redCheck.detail + '\n' + (redCheck.output || '')
+      : 'verifier returned nothing'
+    log(tag + ': RED rejected (' + feedback.slice(0, 200) + ')')
+  }
+  if (!redCheck || !redCheck.ok) {
+    stop(tag + ' RED', { status: 'blocked', reason: 'no valid RED after revisions: ' + feedback })
+  }
+  results.push({ step: tag + ' RED', ...redCheck })
+  await step(
+    'spdd',
+    tag + ' commit RED',
+    'Commit ONLY the new/changed files under api/tests/ with message "[' +
+      storyId +
+      '] RED: tests for ' +
+      op.id +
+      '" through the hooks (tests are expected to fail; pre-commit does not run tests). Return commit.',
+    ['commit']
+  )
+
+  // GREEN — implementer with the full canvas.
+  let greenCheck = null
+  feedback = ''
+  for (let round = 0; round <= MAX_REVISIONS; round++) {
+    await agent(
+      'Make the failing tests for ' +
+        tag +
+        ' pass with a proper, pattern-following implementation guided by the FULL canvas ' +
+        ctx.canvasPath +
+        ' (Approach, Structure, Entities, Norms, Safeguards). Implement this Operation only. Never edit api/tests/. ' +
+        'Stop when make test is green.\n\nOperation:\n' +
+        op.text +
+        '\n\nFailing tests:\n' +
+        (redCheck.failingTests || []).join('\n') +
+        '\n' +
+        (redCheck.output || '') +
+        (feedback ? '\n\nThe GREEN verifier rejected the previous attempt:\n' + feedback : ''),
+      { label: tag + ' GREEN implementer', phase: 'spdd', agentType: 'implementer' }
+    )
+    greenCheck = await agent(
+      TESTER_RULES +
+        '\n\nGREEN gate for ' +
+        tag +
+        '. (1) `git diff HEAD --stat -- api/tests` and `git status --short api/tests` must be EMPTY (the implementer must not touch committed RED tests). ' +
+        '(2) `make test` must be fully green. (3) `make lint` green. ok=true only if all three hold.',
+      { label: tag + ' GREEN verify', phase: 'spdd', schema: TDD_CHECK }
+    )
+    if (greenCheck && greenCheck.ok) break
+    feedback = greenCheck
+      ? greenCheck.detail + '\n' + (greenCheck.output || '')
+      : 'verifier returned nothing'
+    log(tag + ': GREEN rejected (' + feedback.slice(0, 200) + ')')
+  }
+  if (!greenCheck || !greenCheck.ok) {
+    stop(tag + ' GREEN', { status: 'blocked', reason: 'not green after revisions: ' + feedback })
+  }
+  await step(
+    'spdd',
+    tag + ' commit GREEN',
+    'If anything changed, commit it with message "[' +
+      storyId +
+      '] GREEN: ' +
+      op.title +
+      '" through the hooks. Return commit.',
+    ['commit']
+  )
+
+  // Post-green adversarial challenge (Day 4-02 #10).
+  const adv = await agent(
+    'Post-green challenge for ' +
+      tag +
+      ': write ONE test that would break the implementation just committed for this Operation ' +
+      '(edge cases, error paths, atomicity, side-effects). Put it under api/tests/. Then run `make test` and classify: ' +
+      'real-gap = your test fails and the behaviour is in scope of the Operation/Safeguards; ' +
+      'out-of-scope = it fails but the canvas excludes it (then DELETE the test and explain); ' +
+      'nothing-found = it passes (keep it). Do not touch api/src.\n\nOperation:\n' +
+      op.text,
+    { label: tag + ' adversarial', phase: 'spdd', agentType: 'test-writer', schema: ADVERSARIAL }
+  )
+  results.push({ step: tag + ' adversarial', ...(adv || { verdict: 'none' }) })
+  if (adv && adv.verdict === 'real-gap') {
+    log(tag + ': adversarial found a real gap → implementer')
+    await agent(
+      'An adversarial test (' +
+        (adv.testFile || 'see git status') +
+        ') exposed a real gap in ' +
+        tag +
+        ': ' +
+        adv.detail +
+        '\nFix the implementation (never edit tests) until make test is green.',
+      { label: tag + ' gap fix', phase: 'spdd', agentType: 'implementer' }
+    )
+  }
+  await step(
+    'spdd',
+    tag + ' commit adversarial',
+    'Run make test; it must be green (else return failed with the red tests). If anything changed, commit it with "[' +
+      storyId +
+      '] Adversarial: ' +
+      op.id +
+      '" through the hooks. Return commit.',
+    ['commit']
+  )
+}
+
 async function sensorRecheck(round) {
   return review(
     'sensor',
@@ -458,6 +656,54 @@ try {
         storyId +
         '] message through the hooks. Return commit.',
       ['commit']
+    )
+  } else if (TDD) {
+    await step(
+      'spdd',
+      'commit SPDD artefacts',
+      'Commit only the SPDD artefacts for this card (stories/, spdd/analysis/, spdd/prompt/) on ' +
+        ctx.branch +
+        ' with a [' +
+        storyId +
+        '] message through the hooks. Do not change code. Return commit.',
+      ['commit']
+    )
+    const plan = await agent(
+      'Read the REASONS canvas ' +
+        ctx.canvasPath +
+        '. Return its Operations in canvas order (copy each verbatim) and a redPacket with the Requirements, Entities, Norms and Safeguards sections copied verbatim. Do not include Approach or Structure. Read-only: change nothing.',
+      { label: 'tdd plan', phase: 'spdd', schema: OPS }
+    )
+    if (!plan || !plan.operations || !plan.operations.length) {
+      stop('tdd plan', { status: 'failed', reason: 'no Operations found in ' + ctx.canvasPath })
+    }
+    const ops = plan.operations.filter((o) => o.testable)
+    const skipped = plan.operations.filter((o) => !o.testable)
+    log(
+      'Strategy A: ' +
+        ops.length +
+        ' Operation(s) via red→green' +
+        (skipped.length
+          ? '; ' +
+            skipped.length +
+            ' non-testable (implemented by the first cycle that needs them): ' +
+            skipped.map((o) => o.id).join(', ')
+          : '')
+    )
+    const packet =
+      plan.redPacket +
+      (skipped.length
+        ? '\n\nSupporting Operations (schema/seed/config) the implementer may also need:\n' +
+          skipped.map((o) => o.text).join('\n\n')
+        : '')
+    for (let i = 0; i < ops.length; i++) {
+      await tddOperation(ops[i], packet, i, ops.length)
+    }
+    await gate(
+      'spdd',
+      'code',
+      CODE_LENSES,
+      'Fix the implementation of ' + storyId + ' per its canvas ' + ctx.canvasPath + '.'
     )
   } else {
     await step(
