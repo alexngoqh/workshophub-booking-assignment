@@ -20,12 +20,12 @@ We use **Strategy A** from the Day 4-02 homework, "Make SPDD and Multi-Agent TDD
 3. **Commit the RED tests** as `[LATC-N] RED: tests for <Op>`. This is the proof of RED in git history.
 4. **GREEN: `implementer` agent.** It gets the full canvas and the failing test output. It must never edit tests.
 5. **GREEN gate: an independent verifier.** It checks that the committed tests are untouched (`git diff HEAD -- api/tests` is empty) and that `make test` and `make lint` are green. Then the code is committed as `[LATC-N] GREEN: ...`.
-6. **Post-green adversarial challenge** (Day 4-02 #10). A test-writer writes one test that tries to break the new code. The result is one of three outcomes:
+6. **Post-green adversarial challenge** (Day 4-02 #10). A test-writer writes one test that tries to break the new code (it has no Bash). A separate agent then runs `make test` and records the actual result as one of three outcomes:
    - real gap: the implementer fixes the code;
    - out of scope: the test is deleted and the reason recorded;
    - nothing found: the test is kept.
 
-Operations that only touch schema, seed or config, and have no observable behaviour of their own, are not cycled on their own. They are passed to the implementer as supporting context.
+Operations that only touch schema, seed or config, and have no observable behaviour of their own, are not cycled on their own. They are passed to the implementer as supporting context, and after the loop a dedicated step applies any that are still missing, then runs `make sensors` and `make test` and commits.
 
 ## Shared rules (both strategies)
 
