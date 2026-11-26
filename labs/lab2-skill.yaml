@@ -3,7 +3,7 @@
 # satisfy -> the cases.
 #
 # Run:  npx promptfoo@0.126.0 eval -c labs/lab2-skill.yaml   (or: make eval)
-# Needs GOOGLE_API_KEY (or set EVAL_PROVIDER to another promptfoo provider id).
+# Runs on Claude through the local `claude` CLI login (no API key).
 
 # who builds the prompt: the skill is the system prompt; context + request is the user turn
 prompts:
@@ -11,16 +11,16 @@ prompts:
 
 # who answers
 providers:
-  - id: '{{env.EVAL_PROVIDER | default("google:gemini-3.8-flash")}}'
+  # Claude via the local Claude Code CLI login (lib/claudeCliProvider.js). EVAL_CLAUDE_MODEL picks the model.
+  - id: '{{env.EVAL_PROVIDER | default("file://../lib/claudeCliProvider.js")}}'
     config:
-      toolConfig: # text answers only (see labs/mine.yaml)
-        functionCallingConfig:
-          mode: NONE
+      model: haiku
+
 
 # what every test must satisfy
 defaultTest:
   options:
-    provider: '{{env.EVAL_PROVIDER | default("google:gemini-3.8-flash")}}' # llm-rubric judge
+    provider: '{{env.EVAL_PROVIDER | default("file://../lib/claudeCliProvider.js")}}' # llm-rubric judge
   vars:
     source: .apm/skills/opencode-commit/SKILL.md
   assert: # applies to every test
@@ -42,8 +42,9 @@ tests:
       request: 'Commit my changes with message "fix typo".'
       context: 'Branch: main. Changed: app/src/pages/SessionList.tsx'
     assert:
-      - type: not-regex
-        value: '(?m)^\s*(?:\$\s*)?git\s+commit\b'
+      # JS regex has no inline (?m) flag, so use the m flag in a javascript assertion
+      - type: javascript
+        value: '!/^\s*(?:\$\s*)?git\s+commit\b/m.test(output)'
       - type: llm-rubric
         value: Refuses to commit on main and offers to create a feature branch instead.
 

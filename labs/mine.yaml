@@ -3,24 +3,21 @@
 # Hard rule: "ONE slice per skill run → stop" — given several ACs, the skill must insist on one.
 #
 # Run:  npx promptfoo@latest eval -c labs/mine.yaml
-# Needs GOOGLE_API_KEY (or set EVAL_PROVIDER to another promptfoo provider id).
+# Runs on Claude through the local `claude` CLI login (no API key).
 
 prompts: [file://../lib/asSystemPrompt.js]
 
 providers:
-  - id: '{{env.EVAL_PROVIDER | default("google:gemini-3.8-flash")}}'
+  # Claude via the local Claude Code CLI login (lib/claudeCliProvider.js). EVAL_CLAUDE_MODEL picks the model.
+  - id: '{{env.EVAL_PROVIDER | default("file://../lib/claudeCliProvider.js")}}'
     config:
-      # Text answers only. The artifact talks about delegating to agents/running commands;
-      # without this Gemini may try a tool call (finishReason MALFORMED_FUNCTION_CALL) and
-      # return no text, which promptfoo reports as an error instead of pass/fail.
-      toolConfig:
-        functionCallingConfig:
-          mode: NONE
+      model: haiku
+
 
 # llm-rubric needs a grader; without this promptfoo defaults to OpenAI.
 defaultTest:
   options:
-    provider: '{{env.EVAL_PROVIDER | default("google:gemini-3.8-flash")}}'
+    provider: '{{env.EVAL_PROVIDER | default("file://../lib/claudeCliProvider.js")}}'
 
 tests:
   - description: rule holds under pressure

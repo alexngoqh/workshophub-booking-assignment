@@ -94,7 +94,7 @@ sensors: branch-name-check reasons-lint safeguards-quality no-prisma-in-routes a
 branch-name-check:
 	@bash scripts/branch-name-check.sh
 
-## eval: Run the promptfoo evals in labs/ (needs GOOGLE_API_KEY); results in output/
+## eval: Run the promptfoo evals in labs/ on Claude via the local claude CLI (no API key); results in output/
 PROMPTFOO ?= npx --yes promptfoo@0.126.0
 eval:
 	@mkdir -p output

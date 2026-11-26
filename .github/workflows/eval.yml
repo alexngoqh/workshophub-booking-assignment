@@ -25,6 +25,9 @@ jobs:
     env:
       GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       PROMPTFOO_DISABLE_TELEMETRY: '1'
+      # Locally the evals run on Claude via the claude CLI login (lib/claudeCliProvider.js).
+      # CI has no CLI login, so it uses a hosted provider through EVAL_PROVIDER.
+      EVAL_PROVIDER: google:gemini-3.8-flash
     steps:
       - name: Checkout
         uses: actions/checkout@v4
