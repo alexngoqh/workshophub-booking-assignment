@@ -1,8 +1,6 @@
 ---
-name: /finish-dev
-id: finish-dev
-category: Development
-description: Finish a story - verify sensors, commit, push, open the MR, notify Slack, and move the Jira card to In Review
+description: Finish a story - verify sensors, commit, push, open the MR, notify Slack,
+  and move the Jira card to In Review
 ---
 
 Close out development on the current story: make sure the sensors are green, commit the work, push it, open the MR/PR, notify the team, and move the LATC Jira card to **In Review**.

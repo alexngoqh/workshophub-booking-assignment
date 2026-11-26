@@ -2,7 +2,7 @@ SHELL := /bin/bash
 ROOT_DIR := $(shell pwd)
 API_DIR := $(ROOT_DIR)/api
 
-.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security reasons-lint branch-name-check no-prisma-in-routes safeguards-quality agent-boundary sensors eval eval-agentic prod-up prod-down prod-logs
+.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security reasons-lint branch-name-check no-prisma-in-routes safeguards-quality agent-boundary apm-audit sensors eval eval-agentic prod-up prod-down prod-logs
 
 ## setup: Install dependencies, generate Prisma client, push schema, seed database
 setup:
@@ -87,8 +87,12 @@ safeguards-quality:
 agent-boundary:
 	@bash scripts/agent-boundary-check.sh
 
+## apm-audit: Agent config deployed from .apm/ has not drifted (apm audit --ci)
+apm-audit:
+	@bash scripts/apm-audit.sh
+
 ## sensors: Run every harness sensor (same set as pre-push and CI)
-sensors: branch-name-check reasons-lint safeguards-quality no-prisma-in-routes agent-boundary
+sensors: branch-name-check reasons-lint safeguards-quality no-prisma-in-routes agent-boundary apm-audit
 
 ## branch-name-check: Check the current branch follows latc-<story>-<slug>
 branch-name-check:

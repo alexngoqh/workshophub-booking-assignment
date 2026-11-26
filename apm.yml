@@ -8,6 +8,7 @@ author: Alex Ngo
 # Accepted values: agent-skills, antigravity, claude, codex, copilot, cursor, gemini, grok-bot, grok-build, hermes, kiro, opencode, windsurf
 targets:
 - opencode
+- claude
 dependencies:
   apm: []
   mcp: []

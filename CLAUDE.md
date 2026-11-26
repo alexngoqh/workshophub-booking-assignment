@@ -67,6 +67,9 @@ Story flow: `/kickoff LATC-N` → `/spdd-analysis` → `/spdd-reasons-canvas` �
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `scripts/reasons-lint.sh` (`make reasons-lint`)           | SPDD prompts in `spdd/prompt/` have all 7 REASONS sections, in order and non-empty. Passes when there are none yet |
 | `scripts/branch-name-check.sh` (`make branch-name-check`) | branch is `latc-<N>-<slug>`; `main` is exempt, others via `BRANCH_NAME_EXEMPT`                                     |
+| `scripts/no-prisma-in-routes.sh`, `safeguards-quality.sh`, `agent-boundary-check.sh`, `apm-audit.sh` | api layering; concrete canvas Safeguards with untrusted-context; AGENT_BOUNDARY present; `.apm/` drift. All in `make sensors`, pre-push and CI |
+| `.apm/` + `apm install` | **Source of truth** for commands (`prompts/`), skills and hooks; deploys to `.claude/` and `.opencode/`. Edit `.apm/`, never the deployed copy. Exceptions (platform-specific): `scripts/apm-audit.allow` |
+| `make eval` | promptfoo evals in `labs/`, run on Claude via the local `claude` CLI (`lib/claudeCliProvider.js`) |
 | `.husky/pre-commit`                                       | branch-name check + reasons-lint on staged prompts                                                                 |
 | `.husky/pre-push`                                         | both sensors + format-check, lint, test (+ Gitleaks/Trivy if installed)                                            |
 | CI `pr-check` / `mr-check`                                | reasons-lint as a merge gate, then test, lint, format                                                              |

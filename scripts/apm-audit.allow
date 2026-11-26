@@ -1,0 +1,7 @@
+# Documented exemptions for scripts/apm-audit.sh (unmanaged-conflict drift only).
+# These Claude Code files are platform-specific on purpose: the .apm/ sources of the same name are
+# OpenCode-format (tools map + permission block / OpenCode kickoff) and would break Claude Code if
+# deployed. APM 0.37 has no per-file target selection, so they stay hand-maintained.
+.claude/agents/implementer.md   Claude tools list; .apm/agents/implementer.agent.md is OpenCode format
+.claude/agents/test-writer.md   Claude tools list; .apm/agents/test-writer.agent.md is OpenCode format
+.claude/commands/kickoff.md     Claude kickoff (replica/branch policy); .apm/prompts/kickoff.prompt.md is the OpenCode kickoff

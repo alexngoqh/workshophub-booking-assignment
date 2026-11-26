@@ -1,8 +1,6 @@
 ---
-name: /sensor-and-fix
-id: sensor-and-fix
-category: Development
-description: Run the harness sensors (reasons-lint, branch-name-check, format, lint, tests) as review steps, fix whatever fails, and re-run until green
+description: Run the harness sensors (reasons-lint, branch-name-check, format, lint,
+  tests) as review steps, fix whatever fails, and re-run until green
 ---
 
 Run the project's sensors as an ordered review pipeline. When a sensor fails, read its output, fix the root cause, and re-run that sensor until it passes, then move on. Finish with one full green pass.
@@ -24,7 +22,8 @@ Read [AGENT.md](../../AGENT.md) first. Its norms (no `any`, no Prisma in routes,
 | 3   | safeguards   | `bash scripts/safeguards-quality.sh`     | new canvases: >=2 Safeguards, LATC ref, untrusted-context |
 | 4   | api-layer    | `bash scripts/no-prisma-in-routes.sh`    | routes never access Prisma             |
 | 5   | boundary     | `bash scripts/agent-boundary-check.sh`   | AGENT_BOUNDARY + untrusted-context rule present |
-| 6   | format       | `make format-check`                      | Prettier                               |
+| 6   | apm-audit    | `bash scripts/apm-audit.sh`              | deployed agent config matches `.apm/`  |
+| 6b  | format       | `make format-check`                      | Prettier                               |
 | 7   | lint         | `make lint`                              | ESLint (app + api)                     |
 | 8   | test         | `make test`                              | Jest unit + integration                |
 
@@ -54,6 +53,8 @@ Read [AGENT.md](../../AGENT.md) first. Its norms (no `any`, no Prisma in routes,
 **api-layer**: move the Prisma call into a function in `api/src/services/`, call it from the route, keep the HTTP mapping in the route, and keep tests green. Never add a line to `scripts/no-prisma-in-routes.allow` yourself: an exemption is the user's decision.
 
 **boundary**: never weaken it. Restore the section in AGENT.md §4 from git history (`git show origin/main:AGENT.md`), or stop and ask.
+
+**apm-audit**: edit the source under `.apm/` (never the deployed copy in `.claude/` or `.opencode/`), then `rm` the drifted deployed file and run `apm install`. Never add a line to `scripts/apm-audit.allow` yourself.
 
 **format**: run `pnpm run format` (or `pnpm exec prettier --write <files>`) only on the files that were flagged, then re-check.
 

@@ -23,6 +23,14 @@ jobs:
           bash scripts/no-prisma-in-routes.sh
           bash scripts/agent-boundary-check.sh
 
+      - name: Install APM
+        run: |
+          curl -sSL https://aka.ms/apm-unix | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: APM drift audit
+        run: apm --version && bash scripts/apm-audit.sh
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
