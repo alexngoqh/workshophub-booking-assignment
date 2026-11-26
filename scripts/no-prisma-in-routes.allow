@@ -1,4 +1,3 @@
 # Documented exemptions for scripts/no-prisma-in-routes.sh — one path per line, then the reason.
 # Every entry is debt with a card; remove the line when the card is done.
-api/src/routes/admin.ts               planted baseline anti-pattern (own PrismaClient) — refactor tracked in LATC-149 follow-up
 api/src/routes/training-sessions.ts   planted baseline anti-pattern (GET /search calls Prisma) — refactor tracked in LATC-149 follow-up
