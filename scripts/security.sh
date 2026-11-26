@@ -27,7 +27,9 @@ fi
 if command -v trivy &>/dev/null; then
   echo ""
   echo "▶ Running Trivy filesystem scan..."
-  if trivy fs . --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 2>&1; then
+  # Skip gitignored local-only paths CI never sees: output/ (eval sandbox artifacts) and .env
+  # (local credentials, user-approved exemption; .env is gitignored and committed content is covered by Gitleaks).
+  if trivy fs . --skip-dirs output --skip-files .env --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 2>&1; then
     echo "PASS: Trivy — no critical/high vulnerabilities"
   else
     echo "FAIL: Trivy found critical/high vulnerabilities"
