@@ -92,6 +92,17 @@ describe('getAllSessionsForAdmin', () => {
     result.forEach((row: object) => expect(row).not.toHaveProperty('waitlisted'))
   })
 
+  it('includes sessions of every status (no filtering) and keeps prisma ordering', async () => {
+    const closed = { ...mockSession, id: 3, status: 'closed', registered: 20 }
+    const cancelled = { ...mockSession, id: 4, status: 'cancelled', registered: 0 }
+    mockFindMany.mockResolvedValue([closed, mockSession, cancelled])
+
+    const result = await getAllSessionsForAdmin()
+
+    expect(result).toEqual([closed, mockSession, cancelled])
+    expect(mockFindMany.mock.calls[0][0]).not.toHaveProperty('where')
+  })
+
   it('propagates errors from prisma', async () => {
     mockFindMany.mockRejectedValue(new Error('db down'))
 
