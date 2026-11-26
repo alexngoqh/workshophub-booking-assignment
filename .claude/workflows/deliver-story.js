@@ -393,7 +393,8 @@ async function tddOperation(op, packet, idx, total) {
       TESTER_RULES +
         '\n\nRED gate for ' +
         tag +
-        '. (1) `git status --short`: every changed/new file must be under api/tests/ — if not, ok=false and list them. ' +
+        '. (1) `git status --short`: every file changed/added for THIS card must be under api/tests/ — if not, ok=false and list them. ' +
+        'Ignore untracked files that belong to OTHER card keys (e.g. spdd/ or stories/ files named LATC-<other>-…): they predate this run and the kickoff working-tree policy leaves them alone. ' +
         '(2) Run `make test`. ok=true only if at least one NEW test fails, and every new failure is for the RIGHT reason ' +
         '(missing behaviour, wrong status/body) — not a syntax, import, type or setup error, and no previously-green test broke. ' +
         'Put the failing test names in failingTests and expected-vs-received lines in output.\n\nOperation:\n' +
@@ -469,16 +470,27 @@ async function tddOperation(op, packet, idx, total) {
   )
 
   // Post-green adversarial challenge (Day 4-02 #10).
-  const adv = await agent(
+  // test-writer has no Bash, so it only WRITES the challenge test; an independent agent runs and classifies it.
+  await agent(
     'Post-green challenge for ' +
       tag +
       ': write ONE test that would break the implementation just committed for this Operation ' +
-      '(edge cases, error paths, atomicity, side-effects). Put it under api/tests/. Then run `make test` and classify: ' +
-      'real-gap = your test fails and the behaviour is in scope of the Operation/Safeguards; ' +
-      'out-of-scope = it fails but the canvas excludes it (then DELETE the test and explain); ' +
-      'nothing-found = it passes (keep it). Do not touch api/src.\n\nOperation:\n' +
+      '(edge cases, error paths, atomicity, side-effects), derived from the Operation and Safeguards only. ' +
+      'Put it under api/tests/ and name it so it is easy to find (describe/it title starting "adversarial:"). Do not run tests. Do not touch api/src.\n\nOperation:\n' +
       op.text,
-    { label: tag + ' adversarial', phase: 'spdd', agentType: 'test-writer', schema: ADVERSARIAL }
+    { label: tag + ' adversarial write', phase: 'spdd', agentType: 'test-writer' }
+  )
+  const adv = await agent(
+    RULES +
+      '\n\nClassify the post-green adversarial test for ' +
+      tag +
+      ' (the test titled "adversarial:…" under api/tests/, see git status). Run `make test`, then: ' +
+      'real-gap = it fails and the behaviour is in scope of the Operation/Safeguards in ' +
+      ctx.canvasPath +
+      ' (keep the test); out-of-scope = it fails but the canvas excludes it (DELETE the test, explain in detail); ' +
+      'nothing-found = it passes (keep it). Never edit api/src. Report the real make test result, not a prediction.\n\nOperation:\n' +
+      op.text,
+    { label: tag + ' adversarial verdict', phase: 'spdd', schema: ADVERSARIAL }
   )
   results.push({ step: tag + ' adversarial', ...(adv || { verdict: 'none' }) })
   if (adv && adv.verdict === 'real-gap') {
@@ -706,6 +718,20 @@ try {
         : '')
     for (let i = 0; i < ops.length; i++) {
       await tddOperation(ops[i], packet, i, ops.length)
+    }
+    if (skipped.length) {
+      await step(
+        'spdd',
+        'apply non-testable Operations',
+        'The TDD loop only cycled behaviour Operations. Apply these remaining Operations from ' +
+          ctx.canvasPath +
+          ' exactly as written (schema, seed, config, sensor-allowlist or doc changes) if they are not already done, ' +
+          'then run `make sensors` and `make test` (both must be green) and commit with "[' +
+          storyId +
+          '] <Operation id>: <title>" through the hooks. If an Operation is already satisfied, say so. Return commit.\n\n' +
+          skipped.map((o) => o.id + ': ' + o.title + '\n' + o.text).join('\n\n'),
+        ['commit']
+      )
     }
     await gate(
       'spdd',
