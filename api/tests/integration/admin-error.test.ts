@@ -20,4 +20,16 @@ describe('GET /api/admin/sessions failure', () => {
     expect(res.status).toBe(500)
     expect(res.body).toEqual({ error: 'Failed to fetch sessions' })
   })
+
+  it('returns 500 without leaking internals when the service throws synchronously', async () => {
+    mockedGetAll.mockImplementationOnce(() => {
+      throw new Error('secret connection string leaked')
+    })
+
+    const res = await api().get('/api/admin/sessions')
+
+    expect(res.status).toBe(500)
+    expect(res.body).toEqual({ error: 'Failed to fetch sessions' })
+    expect(JSON.stringify(res.body)).not.toContain('secret')
+  })
 })
