@@ -88,7 +88,7 @@ No schema change. `TrainingSession` is used exactly as stored; no new DTO type i
 1. RED: add `api/tests/integration/admin.test.ts` using the existing server/supertest helpers and `createTestSession()`:
    - create two sessions with different dates (later one created first); `GET /api/admin/sessions` returns 200, an array, both sessions present with the earlier date first, and objects have no `waitlisted` key but include `registered` and `capacity`.
    - clean up created sessions afterwards.
-   - 500 path: in a separate test (unit-level or isolated module with `jest.mock('../../src/services/trainingSessionService')`), make `getAllSessionsForAdmin` reject and assert 500 with `{ error: 'Failed to fetch sessions' }`.
+   - 500 path: in `api/tests/integration/admin-error.test.ts`, `jest.mock('../../src/services/trainingSessionService')` (spreading the actual module, replacing only `getAllSessionsForAdmin` with `jest.fn()`), make it reject once and assert it was called once and the response is 500 with `{ error: 'Failed to fetch sessions' }`.
 2. GREEN: rewrite `api/src/routes/admin.ts`:
    - remove `import { PrismaClient } from '@prisma/client'` and `new PrismaClient()`.
    - `import { getAllSessionsForAdmin } from '../services/trainingSessionService'`.
@@ -101,6 +101,7 @@ No schema change. `TrainingSession` is used exactly as stored; no new DTO type i
 
 ### 4. Full verification
 1. `make test`, `make lint`, `make format-check` green.
+2. E2E regression: `e2e/tests/latc-150-admin-route-service-layer.spec.ts` checks `GET /api/admin/sessions` end to end (200, `date` ascending, raw rows with no `waitlisted`, live `registered` counts).
 
 ## Norms
 1. TypeScript strict, no `any`; no Prisma in routes (AGENT.md).
