@@ -1,5 +1,15 @@
+import * as trainingSessionService from '../../src/services/trainingSessionService'
 import { getAllSessions, getSessionById } from '../../src/services/trainingSessionService'
 import prisma from '../../src/lib/prisma'
+
+// Accessed via the namespace so the suite compiles before the export exists;
+// RED then fails at runtime on the expectations below.
+type AdminService = { getAllSessionsForAdmin?: () => Promise<object[]> }
+const getAllSessionsForAdmin = (): Promise<object[]> => {
+  const fn = (trainingSessionService as unknown as AdminService).getAllSessionsForAdmin
+  expect(typeof fn).toBe('function')
+  return (fn as () => Promise<object[]>)()
+}
 
 jest.mock('../../src/lib/prisma', () => ({
   __esModule: true,
@@ -58,6 +68,45 @@ describe('getAllSessions', () => {
     const result = await getAllSessions()
 
     expect(result).toEqual([])
+  })
+})
+
+describe('getAllSessionsForAdmin', () => {
+  it('queries sessions ordered by date ascending with no include', async () => {
+    mockFindMany.mockResolvedValue([])
+
+    await getAllSessionsForAdmin()
+
+    expect(mockFindMany).toHaveBeenCalledTimes(1)
+    expect(mockFindMany).toHaveBeenCalledWith({ orderBy: { date: 'asc' } })
+  })
+
+  it('returns the raw rows unchanged, without a waitlisted key', async () => {
+    const second = { ...mockSession, id: 2, date: new Date('2026-07-02T09:00:00Z') }
+    const rows = [mockSession, second]
+    mockFindMany.mockResolvedValue(rows)
+
+    const result: object[] = await getAllSessionsForAdmin()
+
+    expect(result).toEqual([mockSession, second])
+    result.forEach((row: object) => expect(row).not.toHaveProperty('waitlisted'))
+  })
+
+  it('includes sessions of every status (no filtering) and keeps prisma ordering', async () => {
+    const closed = { ...mockSession, id: 3, status: 'closed', registered: 20 }
+    const cancelled = { ...mockSession, id: 4, status: 'cancelled', registered: 0 }
+    mockFindMany.mockResolvedValue([closed, mockSession, cancelled])
+
+    const result = await getAllSessionsForAdmin()
+
+    expect(result).toEqual([closed, mockSession, cancelled])
+    expect(mockFindMany.mock.calls[0][0]).not.toHaveProperty('where')
+  })
+
+  it('propagates errors from prisma', async () => {
+    mockFindMany.mockRejectedValue(new Error('db down'))
+
+    await expect(getAllSessionsForAdmin()).rejects.toThrow('db down')
   })
 })
 
