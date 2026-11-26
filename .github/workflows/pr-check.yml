@@ -10,9 +10,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: REASONS canvas lint
         run: bash scripts/reasons-lint.sh
+
+      - name: Harness sensors
+        run: |
+          git fetch --no-tags --depth=200 origin main
+          bash scripts/safeguards-quality.sh
+          bash scripts/no-prisma-in-routes.sh
+          bash scripts/agent-boundary-check.sh
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4

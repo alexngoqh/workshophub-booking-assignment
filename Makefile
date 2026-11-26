@@ -2,7 +2,7 @@ SHELL := /bin/bash
 ROOT_DIR := $(shell pwd)
 API_DIR := $(ROOT_DIR)/api
 
-.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security reasons-lint branch-name-check eval eval-agentic prod-up prod-down prod-logs
+.PHONY: setup dev test test-unit lint format-check build seed reset-db smoke-test security reasons-lint branch-name-check no-prisma-in-routes safeguards-quality agent-boundary sensors eval eval-agentic prod-up prod-down prod-logs
 
 ## setup: Install dependencies, generate Prisma client, push schema, seed database
 setup:
@@ -74,6 +74,21 @@ help:
 ## reasons-lint: Check SPDD prompt files follow the REASONS Canvas structure
 reasons-lint:
 	@bash scripts/reasons-lint.sh
+
+## no-prisma-in-routes: Fail if a route handler accesses Prisma directly (exemptions in scripts/no-prisma-in-routes.allow)
+no-prisma-in-routes:
+	@bash scripts/no-prisma-in-routes.sh
+
+## safeguards-quality: New/changed REASONS canvases have concrete Safeguards (>=2 items, LATC ref, untrusted-context)
+safeguards-quality:
+	@bash scripts/safeguards-quality.sh
+
+## agent-boundary: AGENT.md still declares AGENT_BOUNDARY and the untrusted-context rule
+agent-boundary:
+	@bash scripts/agent-boundary-check.sh
+
+## sensors: Run every harness sensor (same set as pre-push and CI)
+sensors: branch-name-check reasons-lint safeguards-quality no-prisma-in-routes agent-boundary
 
 ## branch-name-check: Check the current branch follows latc-<story>-<slug>
 branch-name-check:
