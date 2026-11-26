@@ -43,6 +43,9 @@ if (!/^LATC-\d+$/.test(storyId)) {
 const replica = input.replica === true
 const base = input.base ? String(input.base) : null
 const VERIFY = input.verify !== false
+// skipGenerate: the story is already implemented on the base branch (evidence in code + tests).
+// Run the full rail but replace /spdd-generate with "commit the SPDD artefacts only".
+const SKIP_GENERATE = input.skipGenerate === true
 const MAX_REVISIONS = Number.isInteger(input.maxRevisions)
   ? Math.max(0, Math.min(input.maxRevisions, 3))
   : 2
@@ -325,7 +328,27 @@ try {
       storyId +
       (replica ? ' on replica card' : '') +
       (base ? ' --base ' + base : '') +
-      '. If the base branch, the card to move, or uncommitted changes need a decision, return blocked. ' +
+      '. Working-tree policy (pre-decided, do not ask): carry modified tracked files under .claude/ or .apm/ ' +
+      '(harness changes) onto the new branch unchanged; leave untracked files that belong to OTHER stories ' +
+      'untouched and uncommitted; any other uncommitted change → return blocked. ' +
+      (SKIP_GENERATE
+        ? 'skipGenerate is set: the story being already implemented on the base branch is EXPECTED and approved; do not block on it. '
+        : '') +
+      (replica
+        ? 'Replica policy (pre-approved by the user, do not ask): if no replica card exists, create one via the Jira MCP — ' +
+          'same project and issue type, title "<original summary> — <your Jira display name>", description and acceptance criteria copied verbatim, ' +
+          'status To Do, linked to ' +
+          storyId +
+          ' with a "Cloners" link; then read it back to confirm and use its key. Never move or edit the original. '
+        : '') +
+      'Branch policy (pre-decided, do not ask): name the branch after the card you work on ' +
+      '(in replica mode the REPLICA key, e.g. latc-148-<slug>). Reuse an existing branch only if it uses that same key ' +
+      'and already contains origin/' +
+      TARGET +
+      '; otherwise create a fresh branch from origin/' +
+      TARGET +
+      '. Never switch to or modify branches of other card keys. ' +
+      'If the base branch or the card to move needs a decision, return blocked. ' +
       'Return branch and cardKey (the card you moved).',
     ['branch', 'cardKey']
   )
@@ -419,24 +442,43 @@ try {
       ctx.canvasPath +
       ' (same file); re-run reasons-lint. Do not touch code.'
   )
-  await step(
-    'spdd',
-    'spdd-generate',
-    'Run /spdd-generate with @' +
-      ctx.canvasPath +
-      '. Follow Operations in order, test-first. Commit the SPDD artefacts and the code on ' +
-      ctx.branch +
-      ' with [' +
-      storyId +
-      '] messages through the hooks. If the canvas and code diverge, fix the canvas first. Return files and commit.',
-    ['commit']
-  )
-  await gate(
-    'spdd',
-    'code',
-    CODE_LENSES,
-    'Fix the implementation of ' + storyId + ' per its canvas ' + ctx.canvasPath + '.'
-  )
+  if (SKIP_GENERATE) {
+    await step(
+      'spdd',
+      'commit-artefacts (generate skipped)',
+      'skipGenerate is set: ' +
+        storyId +
+        ' is already implemented on the base branch. Do NOT run /spdd-generate and do NOT change code. ' +
+        'Verify that every Operation in ' +
+        ctx.canvasPath +
+        ' is already satisfied by existing code and tests (cite file:line); if one is not, return blocked with the gap. ' +
+        'Then commit only the SPDD artefacts (stories/, spdd/analysis/, spdd/prompt/ for this card) on ' +
+        ctx.branch +
+        ' with a [' +
+        storyId +
+        '] message through the hooks. Return commit.',
+      ['commit']
+    )
+  } else {
+    await step(
+      'spdd',
+      'spdd-generate',
+      'Run /spdd-generate with @' +
+        ctx.canvasPath +
+        '. Follow Operations in order, test-first. Commit the SPDD artefacts and the code on ' +
+        ctx.branch +
+        ' with [' +
+        storyId +
+        '] messages through the hooks. If the canvas and code diverge, fix the canvas first. Return files and commit.',
+      ['commit']
+    )
+    await gate(
+      'spdd',
+      'code',
+      CODE_LENSES,
+      'Fix the implementation of ' + storyId + ' per its canvas ' + ctx.canvasPath + '.'
+    )
+  }
 
   // ---- 3. sensor -------------------------------------------------------------------------
   await phase('sensor')
